@@ -1,0 +1,123 @@
+{
+  "name": "offline-buffers-then-uploads-in-batches",
+  "description": "Offline fixes accumulate and drain oldest-first in maxBatchSize batches on reconnect.",
+  "config": {
+    "maxBatchSize": 2
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "connectivity",
+        "online": false
+      },
+      "expect": {}
+    },
+    {
+      "at": 0,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 0
+      },
+      "expect": {
+        "requests": []
+      }
+    },
+    {
+      "at": 2,
+      "input": {
+        "type": "fix",
+        "id": "f2",
+        "dx": 0,
+        "dy": 20
+      },
+      "expect": {
+        "requests": []
+      }
+    },
+    {
+      "at": 3,
+      "input": {
+        "type": "fix",
+        "id": "f3",
+        "dx": 0,
+        "dy": 40
+      },
+      "expect": {
+        "requests": []
+      }
+    },
+    {
+      "at": 4,
+      "input": {
+        "type": "fix",
+        "id": "f4",
+        "dx": 0,
+        "dy": 60
+      },
+      "expect": {
+        "requests": []
+      }
+    },
+    {
+      "at": 5,
+      "input": {
+        "type": "fix",
+        "id": "f5",
+        "dx": 0,
+        "dy": 80
+      },
+      "expect": {
+        "requests": []
+      }
+    },
+    {
+      "at": 10,
+      "input": {
+        "type": "tick"
+      },
+      "expect": {
+        "buffer": [
+          "f1",
+          "f2",
+          "f3",
+          "f4",
+          "f5"
+        ],
+        "requests": []
+      }
+    },
+    {
+      "at": 11,
+      "input": {
+        "type": "connectivity",
+        "online": true
+      },
+      "expect": {
+        "requests": [
+          [
+            "f1",
+            "f2"
+          ],
+          [
+            "f3",
+            "f4"
+          ],
+          [
+            "f5"
+          ]
+        ],
+        "buffer": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "name": "restart-while-stationary-stays-armed",
+  "description": "After a process kill a stationary device stays armed and still wakes on motion.",
+  "config": {
+    "autoSync": false,
+    "stopTimeout": 1
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 0
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f1"
+          }
+        ]
+      }
+    },
+    {
+      "at": 61,
+      "input": {
+        "type": "tick"
+      },
+      "expect": {
+        "state": "stationary",
+        "events": [
+          {
+            "type": "motionchange",
+            "isMoving": false
+          }
+        ]
+      }
+    },
+    {
+      "at": 100,
+      "input": {
+        "type": "restart"
+      },
+      "expect": {
+        "state": "stationary",
+        "engine": "armed",
+        "events": [],
+        "buffer": [
+          "f1"
+        ]
+      }
+    },
+    {
+      "at": 200,
+      "input": {
+        "type": "motionSignal"
+      },
+      "expect": {
+        "state": "moving",
+        "engine": "continuous",
+        "events": [
+          {
+            "type": "motionchange",
+            "isMoving": true
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "name": "motion-signal-resumes-moving",
+  "description": "A motion signal wakes a stationary device; the next fix is recorded even inside distanceFilter.",
+  "config": {
+    "autoSync": false,
+    "stopTimeout": 1
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 0
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f1"
+          }
+        ]
+      }
+    },
+    {
+      "at": 61,
+      "input": {
+        "type": "tick"
+      },
+      "expect": {
+        "state": "stationary",
+        "engine": "armed",
+        "events": [
+          {
+            "type": "motionchange",
+            "isMoving": false
+          }
+        ]
+      }
+    },
+    {
+      "at": 200,
+      "input": {
+        "type": "motionSignal"
+      },
+      "expect": {
+        "state": "moving",
+        "engine": "continuous",
+        "events": [
+          {
+            "type": "motionchange",
+            "isMoving": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 201,
+      "input": {
+        "type": "fix",
+        "id": "f2",
+        "dx": 0,
+        "dy": 2
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f2"
+          }
+        ],
+        "buffer": [
+          "f1",
+          "f2"
+        ]
+      }
+    },
+    {
+      "at": 202,
+      "input": {
+        "type": "fix",
+        "id": "f3",
+        "dx": 0,
+        "dy": 3
+      },
+      "expect": {
+        "events": [],
+        "buffer": [
+          "f1",
+          "f2"
+        ]
+      }
+    }
+  ]
+}

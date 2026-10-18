@@ -1,0 +1,21 @@
+{
+  "name": "restart-while-stopped-stays-stopped",
+  "description": "A relaunch does not start tracking that was never enabled.",
+  "config": {
+    "autoSync": false,
+    "stopTimeout": 1
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "restart"
+      },
+      "expect": {
+        "state": "stopped",
+        "engine": "off",
+        "events": []
+      }
+    }
+  ]
+}

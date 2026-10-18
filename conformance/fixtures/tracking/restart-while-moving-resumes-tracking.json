@@ -1,0 +1,94 @@
+{
+  "name": "restart-while-moving-resumes-tracking",
+  "description": "After a process kill a moving device keeps tracking; the first fix is recorded and the stop timer restarts.",
+  "config": {
+    "autoSync": false,
+    "stopTimeout": 1
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 0
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f1"
+          }
+        ]
+      }
+    },
+    {
+      "at": 10,
+      "input": {
+        "type": "restart"
+      },
+      "expect": {
+        "state": "moving",
+        "engine": "continuous",
+        "events": [],
+        "buffer": [
+          "f1"
+        ]
+      }
+    },
+    {
+      "at": 11,
+      "input": {
+        "type": "fix",
+        "id": "f2",
+        "dx": 0,
+        "dy": 2
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f2"
+          }
+        ],
+        "buffer": [
+          "f1",
+          "f2"
+        ]
+      }
+    },
+    {
+      "at": 70,
+      "input": {
+        "type": "tick"
+      },
+      "expect": {
+        "state": "moving",
+        "events": []
+      }
+    },
+    {
+      "at": 71,
+      "input": {
+        "type": "tick"
+      },
+      "expect": {
+        "state": "stationary",
+        "events": [
+          {
+            "type": "motionchange",
+            "isMoving": false
+          }
+        ]
+      }
+    }
+  ]
+}

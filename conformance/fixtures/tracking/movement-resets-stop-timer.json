@@ -1,0 +1,87 @@
+{
+  "name": "movement-resets-stop-timer",
+  "description": "A fix beyond stationaryRadius from the anchor restarts the stop timer.",
+  "config": {
+    "autoSync": false,
+    "stopTimeout": 1
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 0
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f1"
+          }
+        ]
+      }
+    },
+    {
+      "at": 40,
+      "input": {
+        "type": "fix",
+        "id": "f2",
+        "dx": 0,
+        "dy": 30
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f2"
+          }
+        ],
+        "state": "moving"
+      }
+    },
+    {
+      "at": 61,
+      "input": {
+        "type": "tick"
+      },
+      "expect": {
+        "state": "moving",
+        "events": []
+      }
+    },
+    {
+      "at": 99,
+      "input": {
+        "type": "tick"
+      },
+      "expect": {
+        "state": "moving",
+        "events": []
+      }
+    },
+    {
+      "at": 100,
+      "input": {
+        "type": "tick"
+      },
+      "expect": {
+        "state": "stationary",
+        "events": [
+          {
+            "type": "motionchange",
+            "isMoving": false
+          }
+        ]
+      }
+    }
+  ]
+}

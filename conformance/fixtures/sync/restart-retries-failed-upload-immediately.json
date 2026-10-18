@@ -1,0 +1,51 @@
+{
+  "name": "restart-retries-failed-upload-immediately",
+  "description": "A restart clears the backoff and retries the buffered fixes at once.",
+  "config": {},
+  "server": [
+    500,
+    200
+  ],
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 0
+      },
+      "expect": {
+        "requests": [
+          [
+            "f1"
+          ]
+        ],
+        "buffer": [
+          "f1"
+        ]
+      }
+    },
+    {
+      "at": 2,
+      "input": {
+        "type": "restart"
+      },
+      "expect": {
+        "requests": [
+          [
+            "f1"
+          ]
+        ],
+        "buffer": []
+      }
+    }
+  ]
+}

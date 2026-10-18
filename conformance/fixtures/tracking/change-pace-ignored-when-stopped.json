@@ -1,0 +1,34 @@
+{
+  "name": "change-pace-ignored-when-stopped",
+  "description": "changePace has no effect while tracking is stopped.",
+  "config": {
+    "autoSync": false,
+    "stopTimeout": 1
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "changePace",
+        "isMoving": true
+      },
+      "expect": {
+        "state": "stopped",
+        "engine": "off",
+        "events": []
+      }
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "changePace",
+        "isMoving": false
+      },
+      "expect": {
+        "state": "stopped",
+        "engine": "off",
+        "events": []
+      }
+    }
+  ]
+}

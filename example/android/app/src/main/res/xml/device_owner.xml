@@ -1,0 +1,27 @@
+<device-admin>
+    <uses-policies>
+        <limit-password/>
+        <watch-login/>
+        <reset-password/>
+        <force-lock/>
+        <wipe-data/>
+        <expire-password/>
+        <encrypted-storage/>
+        <disable-camera/>
+        <disable-keyguard-features/>
+        <disable-status-bar/>
+        <ota-disable-automatic-updates/>
+        <ota-disable-notification/>
+        <set-global-proxy/>
+        <set-user-restrictions/>
+        <set-device-owner-lock/>
+        <disable-screen-capture/>
+        <disable-bluetooth/>
+        <disable-usb-file-transfer/>
+        <disable-usb-debug/>
+        <disable-nfc/>
+        <set-user-icon/>
+        <set-user-name/>
+        <disable-keyguard/>
+    </uses-policies>
+</device-admin>

@@ -1,0 +1,77 @@
+{
+  "name": "stop-ignores-fixes-keeps-buffer",
+  "description": "Stopping disables the engine, ignores fixes, and keeps the buffer.",
+  "config": {
+    "autoSync": false,
+    "stopTimeout": 1
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 0
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f1"
+          }
+        ]
+      }
+    },
+    {
+      "at": 2,
+      "input": {
+        "type": "stop"
+      },
+      "expect": {
+        "state": "stopped",
+        "engine": "off",
+        "events": [
+          {
+            "type": "enabledchange",
+            "enabled": false
+          }
+        ],
+        "buffer": [
+          "f1"
+        ]
+      }
+    },
+    {
+      "at": 3,
+      "input": {
+        "type": "fix",
+        "id": "f2",
+        "dx": 0,
+        "dy": 50
+      },
+      "expect": {
+        "events": [],
+        "buffer": [
+          "f1"
+        ]
+      }
+    },
+    {
+      "at": 4,
+      "input": {
+        "type": "stop"
+      },
+      "expect": {
+        "events": []
+      }
+    }
+  ]
+}

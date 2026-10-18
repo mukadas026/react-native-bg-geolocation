@@ -1,0 +1,46 @@
+{
+  "name": "start-records-first-fix",
+  "description": "First fix after start is always recorded.",
+  "config": {
+    "autoSync": false,
+    "stopTimeout": 1
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "start"
+      },
+      "expect": {
+        "state": "moving",
+        "engine": "continuous",
+        "events": [
+          {
+            "type": "enabledchange",
+            "enabled": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 0
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f1"
+          }
+        ],
+        "buffer": [
+          "f1"
+        ]
+      }
+    }
+  ]
+}

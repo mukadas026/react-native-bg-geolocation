@@ -1,0 +1,134 @@
+{
+  "name": "partial-failure-keeps-unsent-batches",
+  "description": "A failing batch and everything after it stay buffered; delivered batches are gone.",
+  "config": {
+    "maxBatchSize": 2
+  },
+  "server": [
+    200,
+    500
+  ],
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "connectivity",
+        "online": false
+      },
+      "expect": {}
+    },
+    {
+      "at": 0,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 0
+      },
+      "expect": {}
+    },
+    {
+      "at": 2,
+      "input": {
+        "type": "fix",
+        "id": "f2",
+        "dx": 0,
+        "dy": 20
+      },
+      "expect": {}
+    },
+    {
+      "at": 3,
+      "input": {
+        "type": "fix",
+        "id": "f3",
+        "dx": 0,
+        "dy": 40
+      },
+      "expect": {}
+    },
+    {
+      "at": 4,
+      "input": {
+        "type": "fix",
+        "id": "f4",
+        "dx": 0,
+        "dy": 60
+      },
+      "expect": {}
+    },
+    {
+      "at": 5,
+      "input": {
+        "type": "fix",
+        "id": "f5",
+        "dx": 0,
+        "dy": 80
+      },
+      "expect": {}
+    },
+    {
+      "at": 10,
+      "input": {
+        "type": "connectivity",
+        "online": true
+      },
+      "expect": {
+        "requests": [
+          [
+            "f1",
+            "f2"
+          ],
+          [
+            "f3",
+            "f4"
+          ]
+        ],
+        "buffer": [
+          "f3",
+          "f4",
+          "f5"
+        ]
+      }
+    },
+    {
+      "at": 19,
+      "input": {
+        "type": "tick"
+      },
+      "expect": {
+        "requests": [],
+        "buffer": [
+          "f3",
+          "f4",
+          "f5"
+        ]
+      }
+    },
+    {
+      "at": 20,
+      "input": {
+        "type": "tick"
+      },
+      "expect": {
+        "requests": [
+          [
+            "f3",
+            "f4"
+          ],
+          [
+            "f5"
+          ]
+        ],
+        "buffer": []
+      }
+    }
+  ]
+}

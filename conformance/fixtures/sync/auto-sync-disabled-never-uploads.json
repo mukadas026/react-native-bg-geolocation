@@ -1,0 +1,64 @@
+{
+  "name": "auto-sync-disabled-never-uploads",
+  "description": "With autoSync off nothing uploads on fixes, reconnects, or restarts.",
+  "config": {
+    "autoSync": false
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 0
+      },
+      "expect": {
+        "requests": [],
+        "buffer": [
+          "f1"
+        ]
+      }
+    },
+    {
+      "at": 2,
+      "input": {
+        "type": "connectivity",
+        "online": false
+      },
+      "expect": {}
+    },
+    {
+      "at": 3,
+      "input": {
+        "type": "connectivity",
+        "online": true
+      },
+      "expect": {
+        "requests": [],
+        "buffer": [
+          "f1"
+        ]
+      }
+    },
+    {
+      "at": 4,
+      "input": {
+        "type": "restart"
+      },
+      "expect": {
+        "requests": [],
+        "buffer": [
+          "f1"
+        ]
+      }
+    }
+  ]
+}

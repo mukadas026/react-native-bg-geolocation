@@ -1,0 +1,73 @@
+{
+  "name": "change-pace-manual-override",
+  "description": "changePace forces the state in both directions and ignores no-ops.",
+  "config": {
+    "autoSync": false,
+    "stopTimeout": 1
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 5,
+      "input": {
+        "type": "changePace",
+        "isMoving": false
+      },
+      "expect": {
+        "state": "stationary",
+        "engine": "armed",
+        "events": [
+          {
+            "type": "motionchange",
+            "isMoving": false
+          }
+        ]
+      }
+    },
+    {
+      "at": 6,
+      "input": {
+        "type": "changePace",
+        "isMoving": false
+      },
+      "expect": {
+        "state": "stationary",
+        "events": []
+      }
+    },
+    {
+      "at": 7,
+      "input": {
+        "type": "changePace",
+        "isMoving": true
+      },
+      "expect": {
+        "state": "moving",
+        "engine": "continuous",
+        "events": [
+          {
+            "type": "motionchange",
+            "isMoving": true
+          }
+        ]
+      }
+    },
+    {
+      "at": 8,
+      "input": {
+        "type": "changePace",
+        "isMoving": true
+      },
+      "expect": {
+        "state": "moving",
+        "events": []
+      }
+    }
+  ]
+}

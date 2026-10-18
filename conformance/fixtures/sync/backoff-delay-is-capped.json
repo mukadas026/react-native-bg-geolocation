@@ -1,0 +1,102 @@
+{
+  "name": "backoff-delay-is-capped",
+  "description": "The retry delay never exceeds syncRetryMaxDelay.",
+  "config": {
+    "syncRetryBaseDelay": 10,
+    "syncRetryMaxDelay": 20
+  },
+  "server": [
+    500,
+    500,
+    500,
+    500,
+    200
+  ],
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 0
+      },
+      "expect": {
+        "requests": [
+          [
+            "f1"
+          ]
+        ]
+      }
+    },
+    {
+      "at": 11,
+      "input": {
+        "type": "tick"
+      },
+      "expect": {
+        "requests": [
+          [
+            "f1"
+          ]
+        ]
+      }
+    },
+    {
+      "at": 31,
+      "input": {
+        "type": "tick"
+      },
+      "expect": {
+        "requests": [
+          [
+            "f1"
+          ]
+        ]
+      }
+    },
+    {
+      "at": 51,
+      "input": {
+        "type": "tick"
+      },
+      "expect": {
+        "requests": [
+          [
+            "f1"
+          ]
+        ]
+      }
+    },
+    {
+      "at": 70,
+      "input": {
+        "type": "tick"
+      },
+      "expect": {
+        "requests": []
+      }
+    },
+    {
+      "at": 71,
+      "input": {
+        "type": "tick"
+      },
+      "expect": {
+        "requests": [
+          [
+            "f1"
+          ]
+        ],
+        "buffer": []
+      }
+    }
+  ]
+}

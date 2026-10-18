@@ -1,0 +1,82 @@
+{
+  "name": "stop-timeout-with-fixes",
+  "description": "Settled fixes for stopTimeout move the state to stationary.",
+  "config": {
+    "autoSync": false,
+    "stopTimeout": 1
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 0
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f1"
+          }
+        ]
+      }
+    },
+    {
+      "at": 30,
+      "input": {
+        "type": "fix",
+        "id": "f2",
+        "dx": 0,
+        "dy": 3
+      },
+      "expect": {
+        "events": [],
+        "state": "moving"
+      }
+    },
+    {
+      "at": 60,
+      "input": {
+        "type": "fix",
+        "id": "f3",
+        "dx": 0,
+        "dy": 2
+      },
+      "expect": {
+        "events": [],
+        "state": "moving"
+      }
+    },
+    {
+      "at": 61,
+      "input": {
+        "type": "fix",
+        "id": "f4",
+        "dx": 0,
+        "dy": 1
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "motionchange",
+            "isMoving": false
+          }
+        ],
+        "state": "stationary",
+        "engine": "armed",
+        "buffer": [
+          "f1"
+        ]
+      }
+    }
+  ]
+}

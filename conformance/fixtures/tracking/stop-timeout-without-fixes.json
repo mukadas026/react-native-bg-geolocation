@@ -1,0 +1,60 @@
+{
+  "name": "stop-timeout-without-fixes",
+  "description": "Stationary is reached by time alone; iOS delivers no fixes while the device is still.",
+  "config": {
+    "autoSync": false,
+    "stopTimeout": 1
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 5,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 0
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f1"
+          }
+        ]
+      }
+    },
+    {
+      "at": 64,
+      "input": {
+        "type": "tick"
+      },
+      "expect": {
+        "state": "moving",
+        "events": []
+      }
+    },
+    {
+      "at": 65,
+      "input": {
+        "type": "tick"
+      },
+      "expect": {
+        "state": "stationary",
+        "engine": "armed",
+        "events": [
+          {
+            "type": "motionchange",
+            "isMoving": false
+          }
+        ]
+      }
+    }
+  ]
+}

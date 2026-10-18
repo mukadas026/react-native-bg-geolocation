@@ -1,0 +1,50 @@
+{
+  "name": "network-error-counts-as-failure",
+  "description": "Status 0 (network error) keeps the batch and schedules a retry.",
+  "config": {},
+  "server": [
+    0
+  ],
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 0
+      },
+      "expect": {
+        "requests": [
+          [
+            "f1"
+          ]
+        ],
+        "buffer": [
+          "f1"
+        ]
+      }
+    },
+    {
+      "at": 11,
+      "input": {
+        "type": "tick"
+      },
+      "expect": {
+        "requests": [
+          [
+            "f1"
+          ]
+        ],
+        "buffer": []
+      }
+    }
+  ]
+}

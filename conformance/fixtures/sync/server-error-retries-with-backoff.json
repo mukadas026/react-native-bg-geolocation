@@ -1,0 +1,148 @@
+{
+  "name": "server-error-retries-with-backoff",
+  "description": "Failed uploads keep the batch and retry with exponential backoff; new fixes wait for the retry.",
+  "config": {},
+  "server": [
+    500,
+    500,
+    200
+  ],
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 0
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f1"
+          }
+        ],
+        "requests": [
+          [
+            "f1"
+          ]
+        ],
+        "buffer": [
+          "f1"
+        ]
+      }
+    },
+    {
+      "at": 5,
+      "input": {
+        "type": "fix",
+        "id": "f2",
+        "dx": 0,
+        "dy": 20
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f2"
+          }
+        ],
+        "requests": [],
+        "buffer": [
+          "f1",
+          "f2"
+        ]
+      }
+    },
+    {
+      "at": 10,
+      "input": {
+        "type": "tick"
+      },
+      "expect": {
+        "requests": [],
+        "buffer": [
+          "f1",
+          "f2"
+        ]
+      }
+    },
+    {
+      "at": 11,
+      "input": {
+        "type": "tick"
+      },
+      "expect": {
+        "requests": [
+          [
+            "f1",
+            "f2"
+          ]
+        ],
+        "buffer": [
+          "f1",
+          "f2"
+        ]
+      }
+    },
+    {
+      "at": 30,
+      "input": {
+        "type": "tick"
+      },
+      "expect": {
+        "requests": [],
+        "buffer": [
+          "f1",
+          "f2"
+        ]
+      }
+    },
+    {
+      "at": 31,
+      "input": {
+        "type": "tick"
+      },
+      "expect": {
+        "requests": [
+          [
+            "f1",
+            "f2"
+          ]
+        ],
+        "buffer": []
+      }
+    },
+    {
+      "at": 40,
+      "input": {
+        "type": "fix",
+        "id": "f3",
+        "dx": 0,
+        "dy": 40
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f3"
+          }
+        ],
+        "requests": [
+          [
+            "f3"
+          ]
+        ],
+        "buffer": []
+      }
+    }
+  ]
+}

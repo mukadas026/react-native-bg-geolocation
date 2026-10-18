@@ -1,0 +1,160 @@
+{
+  "name": "buffer-overflow-drops-oldest-and-reports",
+  "description": "At maxRecordsToPersist the oldest fixes are dropped and the loss is reported, never silent.",
+  "config": {
+    "maxRecordsToPersist": 3
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "connectivity",
+        "online": false
+      },
+      "expect": {}
+    },
+    {
+      "at": 0,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 0
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f1"
+          }
+        ],
+        "buffer": [
+          "f1"
+        ]
+      }
+    },
+    {
+      "at": 2,
+      "input": {
+        "type": "fix",
+        "id": "f2",
+        "dx": 0,
+        "dy": 20
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f2"
+          }
+        ],
+        "buffer": [
+          "f1",
+          "f2"
+        ]
+      }
+    },
+    {
+      "at": 3,
+      "input": {
+        "type": "fix",
+        "id": "f3",
+        "dx": 0,
+        "dy": 40
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f3"
+          }
+        ],
+        "buffer": [
+          "f1",
+          "f2",
+          "f3"
+        ]
+      }
+    },
+    {
+      "at": 4,
+      "input": {
+        "type": "fix",
+        "id": "f4",
+        "dx": 0,
+        "dy": 60
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f4"
+          },
+          {
+            "type": "buffer-overflow",
+            "dropped": [
+              "f1"
+            ]
+          }
+        ],
+        "buffer": [
+          "f2",
+          "f3",
+          "f4"
+        ]
+      }
+    },
+    {
+      "at": 5,
+      "input": {
+        "type": "fix",
+        "id": "f5",
+        "dx": 0,
+        "dy": 80
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f5"
+          },
+          {
+            "type": "buffer-overflow",
+            "dropped": [
+              "f2"
+            ]
+          }
+        ],
+        "buffer": [
+          "f3",
+          "f4",
+          "f5"
+        ]
+      }
+    },
+    {
+      "at": 6,
+      "input": {
+        "type": "connectivity",
+        "online": true
+      },
+      "expect": {
+        "requests": [
+          [
+            "f3",
+            "f4",
+            "f5"
+          ]
+        ],
+        "buffer": []
+      }
+    }
+  ]
+}

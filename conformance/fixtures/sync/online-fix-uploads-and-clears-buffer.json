@@ -1,0 +1,60 @@
+{
+  "name": "online-fix-uploads-and-clears-buffer",
+  "description": "With autoSync, each recorded fix is uploaded and deleted on 2xx.",
+  "config": {},
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 0
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f1"
+          }
+        ],
+        "requests": [
+          [
+            "f1"
+          ]
+        ],
+        "buffer": []
+      }
+    },
+    {
+      "at": 2,
+      "input": {
+        "type": "fix",
+        "id": "f2",
+        "dx": 0,
+        "dy": 20
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f2"
+          }
+        ],
+        "requests": [
+          [
+            "f2"
+          ]
+        ],
+        "buffer": []
+      }
+    }
+  ]
+}

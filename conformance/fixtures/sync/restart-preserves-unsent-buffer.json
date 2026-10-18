@@ -1,0 +1,70 @@
+{
+  "name": "restart-preserves-unsent-buffer",
+  "description": "A process kill with unsent fixes loses nothing; they upload once back online.",
+  "config": {},
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "connectivity",
+        "online": false
+      },
+      "expect": {}
+    },
+    {
+      "at": 0,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 0
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f1"
+          }
+        ],
+        "buffer": [
+          "f1"
+        ]
+      }
+    },
+    {
+      "at": 2,
+      "input": {
+        "type": "restart"
+      },
+      "expect": {
+        "state": "moving",
+        "requests": [],
+        "buffer": [
+          "f1"
+        ]
+      }
+    },
+    {
+      "at": 3,
+      "input": {
+        "type": "connectivity",
+        "online": true
+      },
+      "expect": {
+        "requests": [
+          [
+            "f1"
+          ]
+        ],
+        "buffer": []
+      }
+    }
+  ]
+}

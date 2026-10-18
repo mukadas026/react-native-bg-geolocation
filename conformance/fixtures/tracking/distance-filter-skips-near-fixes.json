@@ -1,0 +1,108 @@
+{
+  "name": "distance-filter-skips-near-fixes",
+  "description": "Fixes closer than distanceFilter to the last recorded fix are not recorded.",
+  "config": {
+    "autoSync": false,
+    "stopTimeout": 1
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 0
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f1"
+          }
+        ]
+      }
+    },
+    {
+      "at": 2,
+      "input": {
+        "type": "fix",
+        "id": "f2",
+        "dx": 0,
+        "dy": 5
+      },
+      "expect": {
+        "events": [],
+        "buffer": [
+          "f1"
+        ]
+      }
+    },
+    {
+      "at": 3,
+      "input": {
+        "type": "fix",
+        "id": "f3",
+        "dx": 0,
+        "dy": 12
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f3"
+          }
+        ],
+        "buffer": [
+          "f1",
+          "f3"
+        ]
+      }
+    },
+    {
+      "at": 4,
+      "input": {
+        "type": "fix",
+        "id": "f4",
+        "dx": 0,
+        "dy": 15
+      },
+      "expect": {
+        "events": [],
+        "buffer": [
+          "f1",
+          "f3"
+        ]
+      }
+    },
+    {
+      "at": 5,
+      "input": {
+        "type": "fix",
+        "id": "f5",
+        "dx": 0,
+        "dy": 30
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f5"
+          }
+        ],
+        "buffer": [
+          "f1",
+          "f3",
+          "f5"
+        ]
+      }
+    }
+  ]
+}
