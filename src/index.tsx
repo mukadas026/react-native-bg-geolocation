@@ -34,6 +34,7 @@ export type Config = {
   notificationText?: string;
   motionPollInterval?: number;
   useMotionSensors?: boolean;
+  geofenceCheckInterval?: number;
 };
 
 export type Geofence = {
