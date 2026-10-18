@@ -46,7 +46,7 @@ So integration is **additive**: keep the existing foreground code for on-screen 
 
 ## smart-attendance-mobile (Expo 57, iOS and Android, Play Services, store distribution)
 
-- **Config plugin.** Add `"react-native-bg-geolocation"` to `plugins` in `app.json`/`app.config.js`. On iOS it adds the `location` background mode and the two location usage descriptions; Android needs nothing from the plugin (the library manifest merges at build time). Verified on a throwaway Expo SDK 58 project with `expo prebuild` on both platforms; not yet run against this app.
+- **Config plugin.** Add `"@mukadasm/react-native-bg-geolocation"` to `plugins` in `app.json`/`app.config.js`. On iOS it adds the `location` background mode and the two location usage descriptions; Android needs nothing from the plugin (the library manifest merges at build time). Verified on a throwaway Expo SDK 58 project with `expo prebuild` on both platforms; not yet run against this app.
 - **Usage strings.** `expo-location` also writes `NSLocation*UsageDescription`. Set the wording in one place: the plugin keeps strings already present and only overrides them when given `iosAlwaysUsageDescription` or `iosWhenInUseUsageDescription`.
 - **Existing local plugins.** The app already has `withIosSceneDelegate`, `withPodDeploymentTargetFix` and `withGradleMemory`. They are unrelated, but the iOS example in this repo needed the same scene-lifecycle fix on iOS 27, so keep that plugin.
 - **Engine.** Devices with Play Services currently run on the AOSP engine because the Fused engine is not built (see known gaps). Tracking works; activity-recognition labels and native geofencing are not used.

@@ -2,7 +2,7 @@
   "compilerOptions": {
     "rootDir": ".",
     "paths": {
-      "react-native-bg-geolocation": ["./src/index"]
+      "@mukadasm/react-native-bg-geolocation": ["./src/index"]
     },
     "allowImportingTsExtensions": true,
     "types": ["node"],

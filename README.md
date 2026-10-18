@@ -1,8 +1,16 @@
-# react-native-bg-geolocation
+# @mukadasm/react-native-bg-geolocation
 
 Background geolocation for React Native, built to run on Android with or without Google Play Services and on iOS. It records location in the background, decides whether the device is moving or still, buffers fixes in a native SQLite store, and uploads them to your server, all without needing JavaScript to be alive.
 
-**Status: work in progress, not published.** Milestones 1 to 5 of 6 are built; milestone 6 (Expo plugin done, host-app integration not started). The package name is a placeholder. See [`docs/known-gaps.md`](docs/known-gaps.md) for what is unverified or missing before using this for anything real.
+**Status: beta (`0.0.1-beta.0`).** Core tracking, buffered upload, geofences, permissions and the Expo plugin are built on both platforms, but several behaviors are only verified on emulators and simulators. Read [`docs/known-gaps.md`](docs/known-gaps.md) before depending on it.
+
+## Install
+
+```sh
+npm install @mukadasm/react-native-bg-geolocation@beta
+```
+
+Then follow [Getting started](docs/getting-started.md) for platform setup, and see the [API reference](docs/api.md) for every method, event and option.
 
 ## How it works
 
@@ -14,10 +22,10 @@ Background geolocation for React Native, built to run on Android with or without
 
 React Native 0.76+ with the New Architecture, Android minSdk 24, iOS 15+.
 
-## Usage (current API)
+## Usage
 
 ```ts
-import BackgroundGeolocation from 'react-native-bg-geolocation';
+import BackgroundGeolocation from '@mukadasm/react-native-bg-geolocation';
 
 BackgroundGeolocation.onLocation((location) => console.log(location.coords));
 BackgroundGeolocation.onMotionChange(({ isMoving }) => console.log(isMoving));
@@ -37,7 +45,7 @@ Uploads are `POST` requests of `{ "location": [ { "uuid", "timestamp", "coords":
 Add the config plugin to your app config:
 
 ```json
-{ "expo": { "plugins": [["react-native-bg-geolocation", { "iosAlwaysUsageDescription": "..." }]] } }
+{ "expo": { "plugins": [["@mukadasm/react-native-bg-geolocation", { "iosAlwaysUsageDescription": "..." }]] } }
 ```
 
 It adds the iOS `location` background mode and the two location usage descriptions (keeping strings your app already set unless you pass them as options). Android needs nothing from the plugin: the library manifest contributes the permissions, foreground service and receivers. Verified with `expo prebuild` on a throwaway Expo SDK 58 project; needs a development build (not Expo Go).

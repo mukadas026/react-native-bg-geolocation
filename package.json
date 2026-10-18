@@ -1,7 +1,7 @@
 {
-  "name": "react-native-bg-geolocation",
-  "version": "0.1.0",
-  "description": "Background geolocation for React Native with Play Services-free Android support",
+  "name": "@mukadasm/react-native-bg-geolocation",
+  "version": "0.0.1-beta.0",
+  "description": "Background geolocation for React Native: native buffering and upload, geofences, and Android support without Google Play Services",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
   "exports": {
@@ -55,7 +55,16 @@
   "keywords": [
     "react-native",
     "ios",
-    "android"
+    "android",
+    "geolocation",
+    "background",
+    "geofence",
+    "geofencing",
+    "gps",
+    "tracking",
+    "location",
+    "offline",
+    "expo-config-plugin"
   ],
   "repository": {
     "type": "git",

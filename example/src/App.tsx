@@ -9,7 +9,9 @@ import {
   Text,
   View,
 } from 'react-native';
-import BackgroundGeolocation, { type State } from 'react-native-bg-geolocation';
+import BackgroundGeolocation, {
+  type State,
+} from '@mukadasm/react-native-bg-geolocation';
 
 const AUTO_START = false;
 const AUTO_DEMO = false;
