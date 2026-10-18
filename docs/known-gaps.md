@@ -48,7 +48,8 @@ Verified in the iPhone 17 simulator (iOS 27) only: start, record, distance filte
 - **Android notification** supports title and text only; the small icon is a system placeholder.
 - **Distance filter is applied twice.** The engine passes `distanceFilter` to the platform and the core filters again; harmless but untested for edge cases.
 - **No upload authentication handling.** 401 and 403 are treated like any other failure and retried with backoff; the design calls for pausing sync.
-- **Package name, README and CI are template-level.** The package name is a placeholder; CI does not run the core test suites.
+- **Package name is a placeholder, and the new CI jobs have never run.** `test-cores` and `test-swift-core` were added to `.github/workflows/ci.yml` and validated as YAML only; the template's `build-android` and `build-ios` jobs (turbo-based) were not checked against this layout. The package is not published, and installing from git has not been tested (`main` points at a build output); `yarn prepare` then `yarn pack` is the suggested route.
+- **The Expo plugin has not been run against smart-attendance** (Expo SDK 57), only a throwaway SDK 58 project.
 
 ## 3. Specification gaps
 
@@ -64,6 +65,5 @@ Missing everywhere: `setConfig`, `reset`, `getCurrentPosition`, `watchPosition`,
 
 ## 5. Process gaps
 
-- Milestone 6 (Expo config plugin, integration into the two host apps) is not finished. Integrating into the host apps edits repositories outside this one, so it needs your go-ahead.
+- Host-app integration (milestone 6) is planned in `integration.md` but not done. It edits repositories outside this one and needs your go-ahead. Both apps still need the foreground `getCurrentPosition`/`watchPosition` equivalents, which the library does not offer, so adoption is additive.
 - The host apps still use their own location code and `react-native-permissions` for location, which must be removed on adoption.
-- Example app: title and state text are dark-on-black in dark mode.

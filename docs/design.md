@@ -1,6 +1,6 @@
 # Design: Background Geolocation Library
 
-Status: milestones 1 to 5 built; 6 in progress. Vocabulary is in `../GLOSSARY.md`, decisions in `adr/`, and what is unverified or unbuilt in `known-gaps.md`.
+Status: milestones 1 to 5 built; milestone 6 partly done (plugin, CI and integration plan; host-app integration not started). Vocabulary is in `../GLOSSARY.md`, decisions in `adr/`, and what is unverified or unbuilt in `known-gaps.md`.
 
 ## 1. Goals and non-goals
 
@@ -139,7 +139,7 @@ Deliberately not in v1: scheduler, `startSchedule`/`stopSchedule`, `onActivityCh
 
 ## 10. Expo config plugin
 
-Minimal plugin for Expo 57 prebuild/EAS: Android manifest permissions, `location` foreground-service type, service and boot receiver declarations; iOS `UIBackgroundModes: location`, usage description strings, motion usage string. The plugin is covered by snapshot tests.
+`plugin/src/index.ts` (built to `plugin/build`, loaded by `app.plugin.js`). On iOS it adds `location` to `UIBackgroundModes` and sets `NSLocationAlwaysAndWhenInUseUsageDescription` and `NSLocationWhenInUseUsageDescription` with the precedence plugin options, then strings the app already set, then built-in defaults. Android needs nothing: the library's own `AndroidManifest.xml` declares the permissions, the `location` foreground service, the boot receiver and the alarm receiver, and Gradle merges it. The plugin logic is a pure function with 7 unit tests (`yarn test:plugin`), and the plugin was run through `expo prebuild --platform all` on a throwaway SDK 58 project, by file path and by package name. It has not been run against smart-attendance (SDK 57).
 
 ## 11. Repository and testing
 
@@ -163,7 +163,7 @@ Minimal plugin for Expo 57 prebuild/EAS: Android manifest permissions, `location
 | 3 | Android runtime: AOSP engine and fallback chain, SQLite, uploader, foreground service, boot resume, TurboModule | Done for the AOSP engine only; the Fused engine is not built; real-motion, Doze and offline checks pending |
 | 4 | iOS runtime: CoreLocation engine, stationary region, relaunch path, TurboModule | Built and simulator-verified; device background wake-up unverified |
 | 5 | Geofences (both platforms), permission flow, capability flags | Done. Core and spec (17 fixtures, Kotlin and Swift), Android runtime (emulator-verified), iOS runtime (simulator-verified via core evaluation; native regions and permission prompts unverified) |
-| 6 | Expo config plugin, example app polish, integration into the two host apps | Not started |
+| 6 | Expo config plugin, example app polish, integration into the two host apps | Plugin done and verified with `expo prebuild`; example polished; CI extended (unrun); integration plan written in `integration.md`; host apps not edited |
 
 ## 14. Implementation notes: cores and Android (milestones 2 and 3)
 

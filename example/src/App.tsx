@@ -160,13 +160,15 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>bg-geolocation</Text>
-      <Text testID="state">
+      <Text style={[styles.text, styles.title]}>bg-geolocation</Text>
+      <Text testID="state" style={styles.text}>
         {state
           ? `${state.trackingState} · buffered ${state.count}`
           : 'not ready'}
       </Text>
-      <Text testID="kiosk">kiosk: {kiosk}</Text>
+      <Text testID="kiosk" style={styles.text}>
+        kiosk: {kiosk}
+      </Text>
       <View style={styles.row}>
         <Button
           title="Start"
@@ -200,7 +202,7 @@ export default function App() {
       </View>
       <ScrollView style={styles.log}>
         {log.map((line, index) => (
-          <Text key={`${index}-${line}`} style={styles.logLine}>
+          <Text key={`${index}-${line}`} style={[styles.text, styles.logLine]}>
             {line}
           </Text>
         ))}
@@ -210,7 +212,8 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, gap: 12 },
+  container: { flex: 1, padding: 16, gap: 12, backgroundColor: '#fff' },
+  text: { color: '#111' },
   title: { fontSize: 20, fontWeight: '600' },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   log: { flex: 1 },

@@ -31,6 +31,40 @@ jobs:
       - name: Typecheck files
         run: yarn typecheck
 
+  test-cores:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Install JDK
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Conformance reference model
+        run: yarn test:conformance
+
+      - name: Expo plugin
+        run: yarn test:plugin
+
+      - name: Kotlin core
+        run: yarn test:kotlin
+
+  test-swift-core:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Swift core
+        run: swift test --package-path ios/Core
 
   build-library:
     runs-on: ubuntu-latest

@@ -18,9 +18,16 @@
     "android",
     "ios",
     "cpp",
+    "app.plugin.js",
+    "plugin/build",
     "*.podspec",
     "react-native.config.js",
     "!ios/build",
+    "!plugin/src",
+    "!ios/Core/Tests",
+    "!ios/Core/.swiftpm",
+    "!ios/Core/.build",
+    "!android/core-tests",
     "!android/build",
     "!android/gradle",
     "!android/gradlew",
@@ -40,7 +47,9 @@
     "test:conformance": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test conformance/reference/conformance.test.ts",
     "test:kotlin": "./example/android/gradlew -p android/core-tests test --console=plain",
     "test:swift": "swift test --package-path ios/Core",
-    "test:cores": "yarn test:conformance && yarn test:kotlin && yarn test:swift"
+    "test:cores": "yarn test:conformance && yarn test:kotlin && yarn test:swift",
+    "build:plugin": "tsc -p plugin",
+    "test:plugin": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test plugin/src/index.test.ts"
   },
   "keywords": [
     "react-native",
@@ -64,6 +73,7 @@
     "@eslint/compat": "^2.1.0",
     "@eslint/eslintrc": "^3.3.6",
     "@eslint/js": "^9.39.5",
+    "@expo/config-plugins": "^57.0.9",
     "@react-native/babel-preset": "0.86.2",
     "@react-native/eslint-config": "0.86.2",
     "@types/node": "^22.0.0",
@@ -81,6 +91,7 @@
     "typescript": "^6.0.3"
   },
   "peerDependencies": {
+    "@expo/config-plugins": "*",
     "react": "*",
     "react-native": "*"
   },
@@ -128,5 +139,10 @@
       "eslint"
     ],
     "version": "0.63.1"
+  },
+  "peerDependenciesMeta": {
+    "@expo/config-plugins": {
+      "optional": true
+    }
   }
 }
