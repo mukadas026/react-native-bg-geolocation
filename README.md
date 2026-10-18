@@ -1,5 +1,10 @@
 # @mukadasm/react-native-bg-geolocation
 
+[![npm (beta)](https://img.shields.io/npm/v/@mukadasm/react-native-bg-geolocation/beta?label=npm%20beta)](https://www.npmjs.com/package/@mukadasm/react-native-bg-geolocation)
+[![license](https://img.shields.io/npm/l/@mukadasm/react-native-bg-geolocation)](LICENSE)
+
+**Links:** [npm](https://www.npmjs.com/package/@mukadasm/react-native-bg-geolocation) · [GitHub](https://github.com/mukadas026/react-native-bg-geolocation) · [Issues](https://github.com/mukadas026/react-native-bg-geolocation/issues) · [Docs](docs/getting-started.md)
+
 Background geolocation for React Native, built to run on Android with or without Google Play Services and on iOS. It records location in the background, decides whether the device is moving or still, buffers fixes in a native SQLite store, and uploads them to your server, all without needing JavaScript to be alive.
 
 **Status: beta (`0.0.1-beta.0`).** Core tracking, buffered upload, geofences, permissions and the Expo plugin are built on both platforms, but several behaviors are only verified on emulators and simulators. Read [`docs/known-gaps.md`](docs/known-gaps.md) before depending on it.
