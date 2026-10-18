@@ -29,6 +29,7 @@ export default defineConfig([
       'lib/',
       'android/core-tests/build/',
       'ios/Core/.build/',
+      'plugin/dist/',
     ],
   },
 ]);

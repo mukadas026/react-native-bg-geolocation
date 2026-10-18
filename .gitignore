@@ -91,3 +91,7 @@ android/core-tests/.gradle/
 android/core-tests/.kotlin/
 ios/Core/.build/
 ios/Core/.swiftpm/
+
+
+# Expo plugin build output
+plugin/dist/

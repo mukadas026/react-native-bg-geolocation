@@ -50,7 +50,7 @@ It adds the iOS `location` background mode and the two location usage descriptio
 | `android/` | Kotlin core (`core/`), runtime, engines, TurboModule; `core-tests/` is a standalone JVM test project |
 | `ios/` | Swift core (`Core/`, a SwiftPM package), runtime (`Runtime/`), ObjC++ TurboModule shim |
 | `conformance/` | Written spec, JSON fixtures and a TypeScript reference model |
-| `plugin/` | Expo config plugin (`app.plugin.js` loads `plugin/build`) |
+| `plugin/` | Expo config plugin (`app.plugin.js` loads `plugin/dist`) |
 | `example/` | Test app, including an Android device-owner kiosk setup |
 | `docs/` | Design, ADRs, known gaps, host-app integration plan |
 

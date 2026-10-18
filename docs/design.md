@@ -139,7 +139,7 @@ Deliberately not in v1: scheduler, `startSchedule`/`stopSchedule`, `onActivityCh
 
 ## 10. Expo config plugin
 
-`plugin/src/index.ts` (built to `plugin/build`, loaded by `app.plugin.js`). On iOS it adds `location` to `UIBackgroundModes` and sets `NSLocationAlwaysAndWhenInUseUsageDescription` and `NSLocationWhenInUseUsageDescription` with the precedence plugin options, then strings the app already set, then built-in defaults. Android needs nothing: the library's own `AndroidManifest.xml` declares the permissions, the `location` foreground service, the boot receiver and the alarm receiver, and Gradle merges it. The plugin logic is a pure function with 7 unit tests (`yarn test:plugin`), and the plugin was run through `expo prebuild --platform all` on a throwaway SDK 58 project, by file path and by package name. It has not been run against smart-attendance (SDK 57).
+`plugin/src/index.ts` (built to `plugin/dist`, loaded by `app.plugin.js`). On iOS it adds `location` to `UIBackgroundModes` and sets `NSLocationAlwaysAndWhenInUseUsageDescription` and `NSLocationWhenInUseUsageDescription` with the precedence plugin options, then strings the app already set, then built-in defaults. Android needs nothing: the library's own `AndroidManifest.xml` declares the permissions, the `location` foreground service, the boot receiver and the alarm receiver, and Gradle merges it. The plugin logic is a pure function with 7 unit tests (`yarn test:plugin`), and the plugin was run through `expo prebuild --platform all` on a throwaway SDK 58 project, by file path and by package name. It has not been run against smart-attendance (SDK 57).
 
 ## 11. Repository and testing
 
