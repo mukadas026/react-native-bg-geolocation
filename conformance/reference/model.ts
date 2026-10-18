@@ -10,6 +10,7 @@ export type Config = {
   syncRetryBaseDelay: number;
   syncRetryMaxDelay: number;
   maxRecordsToPersist: number;
+  geofenceLimit: number;
 };
 
 export const DEFAULT_CONFIG: Config = {
@@ -21,6 +22,7 @@ export const DEFAULT_CONFIG: Config = {
   syncRetryBaseDelay: 10,
   syncRetryMaxDelay: 300,
   maxRecordsToPersist: -1,
+  geofenceLimit: 20,
 };
 
 export type Input =
@@ -31,13 +33,28 @@ export type Input =
   | { type: 'motionSignal' }
   | { type: 'tick' }
   | { type: 'connectivity'; online: boolean }
-  | { type: 'restart' };
+  | { type: 'restart' }
+  | {
+      type: 'addGeofence';
+      id: string;
+      dx: number;
+      dy: number;
+      radius: number;
+      notifyOnEntry?: boolean;
+      notifyOnExit?: boolean;
+    }
+  | { type: 'removeGeofence'; id: string }
+  | { type: 'geofenceCheck'; dx: number; dy: number }
+  | { type: 'geofenceTransition'; id: string; action: 'ENTER' | 'EXIT' };
+
+export type GeofenceResult = 'ok' | 'limit' | 'invalid' | 'removed' | 'unknown';
 
 export type CoreEvent =
   | { type: 'enabledchange'; enabled: boolean }
   | { type: 'motionchange'; isMoving: boolean }
   | { type: 'location'; id: string }
-  | { type: 'buffer-overflow'; dropped: string[] };
+  | { type: 'buffer-overflow'; dropped: string[] }
+  | { type: 'geofence'; id: string; action: 'ENTER' | 'EXIT' };
 
 export type StepResult = {
   state: TrackingState;
@@ -45,6 +62,17 @@ export type StepResult = {
   events: CoreEvent[];
   requests: string[][];
   buffer: string[];
+  result: GeofenceResult | undefined;
+  geofences: string[];
+};
+
+type Geofence = {
+  id: string;
+  center: Position;
+  radius: number;
+  notifyOnEntry: boolean;
+  notifyOnExit: boolean;
+  inside: boolean | null;
 };
 
 type Position = { lat: number; lon: number };
@@ -82,8 +110,11 @@ export class ReferenceCore {
   private failures = 0;
   private retryAt: number | null = null;
 
+  private geofences: Geofence[] = [];
+
   private events: CoreEvent[] = [];
   private requests: string[][] = [];
+  private result: GeofenceResult | undefined;
 
   constructor(config: Partial<Config>, server: number[]) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -93,6 +124,7 @@ export class ReferenceCore {
   step(input: Input, at: number): StepResult {
     this.events = [];
     this.requests = [];
+    this.result = undefined;
 
     switch (input.type) {
       case 'start':
@@ -124,6 +156,20 @@ export class ReferenceCore {
           this.autoFlush(at);
         }
         break;
+      case 'addGeofence':
+        this.addGeofence(input);
+        break;
+      case 'removeGeofence':
+        this.result = this.removeGeofence(input.id);
+        break;
+      case 'geofenceCheck':
+        if (this.state !== 'stopped') {
+          this.evaluateGeofences(toPosition(input.dx, input.dy));
+        }
+        break;
+      case 'geofenceTransition':
+        this.onGeofenceTransition(input.id, input.action);
+        break;
       case 'restart':
         this.anchor = null;
         this.lastRecorded = null;
@@ -145,6 +191,8 @@ export class ReferenceCore {
       events: this.events,
       requests: this.requests,
       buffer: [...this.buffer],
+      result: this.result,
+      geofences: this.geofences.map((geofence) => geofence.id),
     };
   }
 
@@ -199,17 +247,79 @@ export class ReferenceCore {
       this.lastRecorded === null ||
       this.forceNextRecord ||
       distance(position, this.lastRecorded) >= this.config.distanceFilter;
-    if (!shouldRecord) return;
 
-    this.lastRecorded = position;
-    this.forceNextRecord = false;
-    this.buffer.push(id);
-    this.events.push({ type: 'location', id });
-    this.enforceRetention();
+    if (shouldRecord) {
+      this.lastRecorded = position;
+      this.forceNextRecord = false;
+      this.buffer.push(id);
+      this.events.push({ type: 'location', id });
+      this.enforceRetention();
 
-    const retryPending = this.retryAt !== null && at < this.retryAt;
-    if (!retryPending) {
-      this.autoFlush(at);
+      const retryPending = this.retryAt !== null && at < this.retryAt;
+      if (!retryPending) {
+        this.autoFlush(at);
+      }
+    }
+
+    this.evaluateGeofences(position);
+  }
+
+  private addGeofence(input: Extract<Input, { type: 'addGeofence' }>): void {
+    if (!Number.isFinite(input.radius) || input.radius <= 0) {
+      this.result = 'invalid';
+      return;
+    }
+    const geofence: Geofence = {
+      id: input.id,
+      center: toPosition(input.dx, input.dy),
+      radius: input.radius,
+      notifyOnEntry: input.notifyOnEntry ?? true,
+      notifyOnExit: input.notifyOnExit ?? true,
+      inside: null,
+    };
+    const index = this.geofences.findIndex((g) => g.id === input.id);
+    if (index >= 0) {
+      this.geofences[index] = geofence;
+      this.result = 'ok';
+    } else if (this.geofences.length >= this.config.geofenceLimit) {
+      this.result = 'limit';
+    } else {
+      this.geofences.push(geofence);
+      this.result = 'ok';
+    }
+  }
+
+  private removeGeofence(id: string): GeofenceResult {
+    const index = this.geofences.findIndex((g) => g.id === id);
+    if (index < 0) return 'unknown';
+    this.geofences.splice(index, 1);
+    return 'removed';
+  }
+
+  private evaluateGeofences(position: Position): void {
+    for (const geofence of this.geofences) {
+      this.applyGeofenceReading(
+        geofence,
+        distance(position, geofence.center) <= geofence.radius
+      );
+    }
+  }
+
+  private onGeofenceTransition(id: string, action: 'ENTER' | 'EXIT'): void {
+    if (this.state === 'stopped') return;
+    const geofence = this.geofences.find((g) => g.id === id);
+    if (geofence) {
+      this.applyGeofenceReading(geofence, action === 'ENTER');
+    }
+  }
+
+  private applyGeofenceReading(geofence: Geofence, inside: boolean): void {
+    const previous = geofence.inside;
+    geofence.inside = inside;
+    if (inside && previous !== true && geofence.notifyOnEntry) {
+      this.events.push({ type: 'geofence', id: geofence.id, action: 'ENTER' });
+    } else if (!inside && previous === true && geofence.notifyOnExit) {
+      this.events.push({ type: 'geofence', id: geofence.id, action: 'EXIT' });
     }
   }
 

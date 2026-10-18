@@ -1,0 +1,75 @@
+{
+  "name": "limit-rejects-new-but-allows-replace",
+  "description": "At the limit a new id is rejected but an existing id can still be replaced.",
+  "config": {
+    "autoSync": false,
+    "stopTimeout": 1,
+    "geofenceLimit": 2
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "addGeofence",
+        "id": "g1",
+        "dx": 0,
+        "dy": 0,
+        "radius": 10
+      },
+      "expect": {
+        "result": "ok"
+      }
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "addGeofence",
+        "id": "g2",
+        "dx": 0,
+        "dy": 0,
+        "radius": 10
+      },
+      "expect": {
+        "result": "ok",
+        "geofences": [
+          "g1",
+          "g2"
+        ]
+      }
+    },
+    {
+      "at": 2,
+      "input": {
+        "type": "addGeofence",
+        "id": "g3",
+        "dx": 0,
+        "dy": 0,
+        "radius": 10
+      },
+      "expect": {
+        "result": "limit",
+        "geofences": [
+          "g1",
+          "g2"
+        ]
+      }
+    },
+    {
+      "at": 3,
+      "input": {
+        "type": "addGeofence",
+        "id": "g1",
+        "dx": 0,
+        "dy": 0,
+        "radius": 20
+      },
+      "expect": {
+        "result": "ok",
+        "geofences": [
+          "g1",
+          "g2"
+        ]
+      }
+    }
+  ]
+}

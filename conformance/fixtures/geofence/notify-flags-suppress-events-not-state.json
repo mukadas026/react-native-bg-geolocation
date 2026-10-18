@@ -1,0 +1,87 @@
+{
+  "name": "notify-flags-suppress-events-not-state",
+  "description": "notifyOnEntry false hides ENTER but the state still updates, so the later EXIT is emitted.",
+  "config": {
+    "autoSync": false,
+    "stopTimeout": 1
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "addGeofence",
+        "id": "g1",
+        "dx": 0,
+        "dy": 100,
+        "radius": 50,
+        "notifyOnEntry": false
+      },
+      "expect": {
+        "result": "ok"
+      }
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 2,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 0
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f1"
+          }
+        ]
+      }
+    },
+    {
+      "at": 3,
+      "input": {
+        "type": "fix",
+        "id": "f2",
+        "dx": 0,
+        "dy": 80
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f2"
+          }
+        ]
+      }
+    },
+    {
+      "at": 4,
+      "input": {
+        "type": "fix",
+        "id": "f3",
+        "dx": 0,
+        "dy": 200
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f3"
+          },
+          {
+            "type": "geofence",
+            "id": "g1",
+            "action": "EXIT"
+          }
+        ]
+      }
+    }
+  ]
+}

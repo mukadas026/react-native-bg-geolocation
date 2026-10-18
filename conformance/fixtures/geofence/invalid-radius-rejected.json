@@ -1,0 +1,54 @@
+{
+  "name": "invalid-radius-rejected",
+  "description": "Zero and negative radii are rejected and change nothing.",
+  "config": {
+    "autoSync": false,
+    "stopTimeout": 1
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "addGeofence",
+        "id": "g1",
+        "dx": 0,
+        "dy": 0,
+        "radius": 0
+      },
+      "expect": {
+        "result": "invalid",
+        "geofences": []
+      }
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "addGeofence",
+        "id": "g1",
+        "dx": 0,
+        "dy": 0,
+        "radius": -5
+      },
+      "expect": {
+        "result": "invalid",
+        "geofences": []
+      }
+    },
+    {
+      "at": 2,
+      "input": {
+        "type": "addGeofence",
+        "id": "g1",
+        "dx": 0,
+        "dy": 0,
+        "radius": 5
+      },
+      "expect": {
+        "result": "ok",
+        "geofences": [
+          "g1"
+        ]
+      }
+    }
+  ]
+}

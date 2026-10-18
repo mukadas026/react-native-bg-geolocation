@@ -2,7 +2,21 @@ public final class TrackingCore {
   private let config: TrackingConfig
   private let fixStore: FixStore
   private let stateStore: StateStore
+  private let geofenceStore: GeofenceStore
   private var online: Bool
+
+  private final class Tracked {
+    let geofence: Geofence
+    var inside: Bool?
+
+    init(_ geofence: Geofence, inside: Bool?) {
+      self.geofence = geofence
+      self.inside = inside
+    }
+  }
+
+  private var geofences: [Tracked]
+  private var geofenceResult: GeofenceResult?
 
   private var state: TrackingState
   private var anchor: Fix?
@@ -17,15 +31,25 @@ public final class TrackingCore {
   private var events: [CoreEvent] = []
   private var pendingUpload: UploadRequest?
 
-  public init(config: TrackingConfig, fixStore: FixStore, stateStore: StateStore, online: Bool = true) {
+  public init(
+    config: TrackingConfig,
+    fixStore: FixStore,
+    stateStore: StateStore,
+    online: Bool = true,
+    geofenceStore: GeofenceStore = InMemoryGeofenceStore()
+  ) {
     self.config = config
     self.fixStore = fixStore
     self.stateStore = stateStore
     self.online = online
+    self.geofenceStore = geofenceStore
     self.state = stateStore.trackingState
+    self.geofences = geofenceStore.all().map { Tracked($0.geofence, inside: $0.inside) }
   }
 
   public var trackingState: TrackingState { state }
+
+  public var geofenceIds: [String] { geofences.map { $0.geofence.id } }
 
   public var engineState: EngineState {
     switch state {
@@ -95,6 +119,53 @@ public final class TrackingCore {
     }
   }
 
+  public func addGeofence(_ geofence: Geofence, at: Int64) -> Output {
+    run(at) {
+      guard geofence.radius.isFinite, geofence.radius > 0 else {
+        geofenceResult = .invalid
+        return
+      }
+      if let index = geofences.firstIndex(where: { $0.geofence.id == geofence.id }) {
+        geofences[index] = Tracked(geofence, inside: nil)
+        geofenceStore.save(geofence, inside: nil)
+        geofenceResult = .ok
+      } else if geofences.count >= config.geofenceLimit {
+        geofenceResult = .limit
+      } else {
+        geofences.append(Tracked(geofence, inside: nil))
+        geofenceStore.save(geofence, inside: nil)
+        geofenceResult = .ok
+      }
+    }
+  }
+
+  public func removeGeofence(id: String, at: Int64) -> Output {
+    run(at) {
+      guard let index = geofences.firstIndex(where: { $0.geofence.id == id }) else {
+        geofenceResult = .unknown
+        return
+      }
+      geofences.remove(at: index)
+      geofenceStore.remove(id: id)
+      geofenceResult = .removed
+    }
+  }
+
+  public func onGeofenceCheck(_ fix: Fix, at: Int64) -> Output {
+    run(at) {
+      if state != .stopped { evaluateGeofences(fix) }
+    }
+  }
+
+  public func onGeofenceTransition(id: String, action: GeofenceAction, at: Int64) -> Output {
+    run(at) {
+      guard state != .stopped,
+        let tracked = geofences.first(where: { $0.geofence.id == id })
+      else { return }
+      applyReading(tracked, inside: action == .enter)
+    }
+  }
+
   public func onFix(_ fix: Fix, at: Int64) -> Output {
     run(at) {
       guard state == .moving else { return }
@@ -115,16 +186,19 @@ public final class TrackingCore {
       } else {
         shouldRecord = true
       }
-      guard shouldRecord else { return }
 
-      lastRecorded = fix
-      forceNextRecord = false
-      fixStore.append(fix)
-      events.append(.location(fix.id))
-      enforceRetention()
+      if shouldRecord {
+        lastRecorded = fix
+        forceNextRecord = false
+        fixStore.append(fix)
+        events.append(.location(fix.id))
+        enforceRetention()
 
-      if let due = retryAt, at < due { return }
-      autoUpload()
+        let retryPending = retryAt.map { at < $0 } ?? false
+        if !retryPending { autoUpload() }
+      }
+
+      evaluateGeofences(fix)
     }
   }
 
@@ -152,10 +226,11 @@ public final class TrackingCore {
   private func run(_ at: Int64, _ block: () -> Void) -> Output {
     events = []
     pendingUpload = nil
+    geofenceResult = nil
     block()
     evaluateStop(at)
     if let due = retryAt, at >= due { upload() }
-    return Output(events: events, upload: pendingUpload)
+    return Output(events: events, upload: pendingUpload, result: geofenceResult)
   }
 
   private func transition(to next: TrackingState) {
@@ -186,6 +261,25 @@ public final class TrackingCore {
     guard max >= 0, fixStore.size > max else { return }
     let dropped = fixStore.dropOldest(count: fixStore.size - max)
     events.append(.bufferOverflow(dropped.map { $0.id }))
+  }
+
+  private func evaluateGeofences(_ fix: Fix) {
+    for tracked in geofences {
+      let center = Fix(id: "", lat: tracked.geofence.lat, lon: tracked.geofence.lon)
+      applyReading(tracked, inside: distanceMeters(fix, center) <= tracked.geofence.radius)
+    }
+  }
+
+  private func applyReading(_ tracked: Tracked, inside: Bool) {
+    let previous = tracked.inside
+    tracked.inside = inside
+    geofenceStore.setInside(id: tracked.geofence.id, inside: inside)
+    let geofence = tracked.geofence
+    if inside, previous != true, geofence.notifyOnEntry {
+      events.append(.geofence(id: geofence.id, action: .enter))
+    } else if !inside, previous == true, geofence.notifyOnExit {
+      events.append(.geofence(id: geofence.id, action: .exit))
+    }
   }
 
   private func autoUpload() {

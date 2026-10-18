@@ -1,0 +1,97 @@
+{
+  "name": "multiple-geofences-in-registration-order",
+  "description": "Events for several geofences are emitted in registration order.",
+  "config": {
+    "autoSync": false,
+    "stopTimeout": 1
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "addGeofence",
+        "id": "b",
+        "dx": 0,
+        "dy": 0,
+        "radius": 100
+      },
+      "expect": {
+        "result": "ok"
+      }
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "addGeofence",
+        "id": "a",
+        "dx": 0,
+        "dy": 0,
+        "radius": 50
+      },
+      "expect": {
+        "result": "ok"
+      }
+    },
+    {
+      "at": 2,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 3,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 10
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f1"
+          },
+          {
+            "type": "geofence",
+            "id": "b",
+            "action": "ENTER"
+          },
+          {
+            "type": "geofence",
+            "id": "a",
+            "action": "ENTER"
+          }
+        ]
+      }
+    },
+    {
+      "at": 4,
+      "input": {
+        "type": "fix",
+        "id": "f2",
+        "dx": 0,
+        "dy": 500
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f2"
+          },
+          {
+            "type": "geofence",
+            "id": "b",
+            "action": "EXIT"
+          },
+          {
+            "type": "geofence",
+            "id": "a",
+            "action": "EXIT"
+          }
+        ]
+      }
+    }
+  ]
+}

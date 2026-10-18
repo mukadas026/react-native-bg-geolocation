@@ -30,6 +30,7 @@ Verified in the iPhone 17 simulator (iOS 27) only: start, record, distance filte
 
 ## 2. Code gaps
 
+- **The Fused engine is not implemented.** ADR-0002 makes both Android engines first-class, but only `AospEngine` exists. Play-Services devices (such as the store-distributed smart-attendance app) currently run on the AOSP engine, which works there but forgoes ActivityRecognition labels, native geofencing and Fused battery behavior. `engine: 'auto'` and `engine: 'aosp'` are not wired up yet.
 - **No automated tests for the platform layers.** Only the pure cores (Kotlin, Swift) and the TypeScript reference model run in CI-able suites. The SQLite stores, uploaders, engines and runtimes have none.
 - **Android service restart from the background.** The alarm receiver restarts the runtime but cannot start the foreground service; recovery relies on `START_STICKY` and the boot receiver.
 - **`ready()` rebuilds the core.** Calling it again, or changing config, resets the stop-detection anchor and last-recorded fix.

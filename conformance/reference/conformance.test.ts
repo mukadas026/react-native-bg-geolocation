@@ -7,6 +7,7 @@ import {
   type Config,
   type CoreEvent,
   type EngineState,
+  type GeofenceResult,
   type Input,
   type TrackingState,
 } from './model.ts';
@@ -17,6 +18,8 @@ type Expectation = {
   events?: CoreEvent[];
   requests?: string[][];
   buffer?: string[];
+  result?: GeofenceResult;
+  geofences?: string[];
 };
 
 type Fixture = {
@@ -82,6 +85,16 @@ for (const { file, fixture } of fixtures) {
       }
       if (expect?.buffer !== undefined) {
         assert.deepEqual(result.buffer, expect.buffer, `${where}: buffer`);
+      }
+      if (expect?.result !== undefined) {
+        assert.equal(result.result, expect.result, `${where}: result`);
+      }
+      if (expect?.geofences !== undefined) {
+        assert.deepEqual(
+          result.geofences,
+          expect.geofences,
+          `${where}: geofences`
+        );
       }
     });
   });

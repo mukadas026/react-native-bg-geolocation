@@ -1,0 +1,64 @@
+{
+  "name": "native-transition-ignored-while-stopped",
+  "description": "A native signal arriving while stopped is ignored and does not change state.",
+  "config": {
+    "autoSync": false,
+    "stopTimeout": 1
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "addGeofence",
+        "id": "g1",
+        "dx": 0,
+        "dy": 0,
+        "radius": 50
+      },
+      "expect": {
+        "result": "ok"
+      }
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "geofenceTransition",
+        "id": "g1",
+        "action": "ENTER"
+      },
+      "expect": {
+        "events": [],
+        "state": "stopped"
+      }
+    },
+    {
+      "at": 2,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 3,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 0
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f1"
+          },
+          {
+            "type": "geofence",
+            "id": "g1",
+            "action": "ENTER"
+          }
+        ]
+      }
+    }
+  ]
+}

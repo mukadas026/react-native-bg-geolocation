@@ -1,0 +1,70 @@
+{
+  "name": "notify-on-exit-false-hides-exit",
+  "description": "notifyOnExit false hides EXIT.",
+  "config": {
+    "autoSync": false,
+    "stopTimeout": 1
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "addGeofence",
+        "id": "g1",
+        "dx": 0,
+        "dy": 100,
+        "radius": 50,
+        "notifyOnExit": false
+      },
+      "expect": {
+        "result": "ok"
+      }
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 2,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 80
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f1"
+          },
+          {
+            "type": "geofence",
+            "id": "g1",
+            "action": "ENTER"
+          }
+        ]
+      }
+    },
+    {
+      "at": 3,
+      "input": {
+        "type": "fix",
+        "id": "f2",
+        "dx": 0,
+        "dy": 200
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f2"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "name": "remove-geofence",
+  "description": "Removing returns removed once, then unknown, and stops events.",
+  "config": {
+    "autoSync": false,
+    "stopTimeout": 1
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "addGeofence",
+        "id": "g1",
+        "dx": 0,
+        "dy": 0,
+        "radius": 50
+      },
+      "expect": {
+        "result": "ok"
+      }
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "removeGeofence",
+        "id": "g1"
+      },
+      "expect": {
+        "result": "removed",
+        "geofences": []
+      }
+    },
+    {
+      "at": 2,
+      "input": {
+        "type": "removeGeofence",
+        "id": "g1"
+      },
+      "expect": {
+        "result": "unknown"
+      }
+    },
+    {
+      "at": 3,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 4,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 0
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f1"
+          }
+        ]
+      }
+    }
+  ]
+}

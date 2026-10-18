@@ -5,7 +5,15 @@ class TrackingCore(
   private val fixStore: FixStore,
   private val stateStore: StateStore,
   private var online: Boolean = true,
+  private val geofenceStore: GeofenceStore = InMemoryGeofenceStore(),
 ) {
+  private class Tracked(val geofence: Geofence, var inside: Boolean?)
+
+  private val geofences = geofenceStore.all()
+    .map { Tracked(it.geofence, it.inside) }
+    .toMutableList()
+  private var geofenceResult: GeofenceResult? = null
+
   private var state = stateStore.trackingState
   private var anchor: Fix? = null
   private var anchorSince = 0L
@@ -20,6 +28,8 @@ class TrackingCore(
   private var pendingUpload: UploadRequest? = null
 
   val trackingState: TrackingState get() = state
+
+  val geofenceIds: List<String> get() = geofences.map { it.geofence.id }
 
   val engineState: EngineState
     get() = when (state) {
@@ -73,6 +83,48 @@ class TrackingCore(
     }
   }
 
+  fun addGeofence(geofence: Geofence, at: Long): Output = run(at) {
+    if (!geofence.radius.isFinite() || geofence.radius <= 0) {
+      geofenceResult = GeofenceResult.INVALID
+      return@run
+    }
+    val index = geofences.indexOfFirst { it.geofence.id == geofence.id }
+    when {
+      index >= 0 -> {
+        geofences[index] = Tracked(geofence, null)
+        geofenceStore.save(geofence, null)
+        geofenceResult = GeofenceResult.OK
+      }
+      geofences.size >= config.geofenceLimit -> geofenceResult = GeofenceResult.LIMIT
+      else -> {
+        geofences += Tracked(geofence, null)
+        geofenceStore.save(geofence, null)
+        geofenceResult = GeofenceResult.OK
+      }
+    }
+  }
+
+  fun removeGeofence(id: String, at: Long): Output = run(at) {
+    val index = geofences.indexOfFirst { it.geofence.id == id }
+    if (index < 0) {
+      geofenceResult = GeofenceResult.UNKNOWN
+    } else {
+      geofences.removeAt(index)
+      geofenceStore.remove(id)
+      geofenceResult = GeofenceResult.REMOVED
+    }
+  }
+
+  fun onGeofenceCheck(fix: Fix, at: Long): Output = run(at) {
+    if (state != TrackingState.STOPPED) evaluateGeofences(fix)
+  }
+
+  fun onGeofenceTransition(id: String, action: GeofenceAction, at: Long): Output = run(at) {
+    if (state == TrackingState.STOPPED) return@run
+    geofences.firstOrNull { it.geofence.id == id }
+      ?.let { applyReading(it, action == GeofenceAction.ENTER) }
+  }
+
   fun onFix(fix: Fix, at: Long): Output = run(at) {
     if (state != TrackingState.MOVING) return@run
 
@@ -85,18 +137,21 @@ class TrackingCore(
     val last = lastRecorded
     val shouldRecord =
       last == null || forceNextRecord || distanceMeters(fix, last) >= config.distanceFilter
-    if (!shouldRecord) return@run
 
-    lastRecorded = fix
-    forceNextRecord = false
-    fixStore.append(fix)
-    events += CoreEvent.Location(fix.id)
-    enforceRetention()
+    if (shouldRecord) {
+      lastRecorded = fix
+      forceNextRecord = false
+      fixStore.append(fix)
+      events += CoreEvent.Location(fix.id)
+      enforceRetention()
 
-    val due = retryAt
-    if (due == null || at >= due) {
-      autoUpload()
+      val due = retryAt
+      if (due == null || at >= due) {
+        autoUpload()
+      }
     }
+
+    evaluateGeofences(fix)
   }
 
   fun onUploadResult(status: Int, at: Long): Output = run(at) {
@@ -121,11 +176,12 @@ class TrackingCore(
   private fun run(at: Long, block: () -> Unit): Output {
     events.clear()
     pendingUpload = null
+    geofenceResult = null
     block()
     evaluateStop(at)
     val due = retryAt
     if (due != null && at >= due) upload()
-    return Output(events.toList(), pendingUpload)
+    return Output(events.toList(), pendingUpload, geofenceResult)
   }
 
   private fun transitionTo(next: TrackingState) {
@@ -156,6 +212,25 @@ class TrackingCore(
     if (max < 0 || fixStore.size() <= max) return
     val dropped = fixStore.dropOldest(fixStore.size() - max)
     events += CoreEvent.BufferOverflow(dropped.map { it.id })
+  }
+
+  private fun evaluateGeofences(fix: Fix) {
+    geofences.forEach { tracked ->
+      val center = Fix("", tracked.geofence.lat, tracked.geofence.lon)
+      applyReading(tracked, distanceMeters(fix, center) <= tracked.geofence.radius)
+    }
+  }
+
+  private fun applyReading(tracked: Tracked, inside: Boolean) {
+    val previous = tracked.inside
+    tracked.inside = inside
+    geofenceStore.setInside(tracked.geofence.id, inside)
+    val geofence = tracked.geofence
+    if (inside && previous != true && geofence.notifyOnEntry) {
+      events += CoreEvent.GeofenceTransition(geofence.id, GeofenceAction.ENTER)
+    } else if (!inside && previous == true && geofence.notifyOnExit) {
+      events += CoreEvent.GeofenceTransition(geofence.id, GeofenceAction.EXIT)
+    }
   }
 
   private fun autoUpload() {

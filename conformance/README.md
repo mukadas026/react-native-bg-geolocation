@@ -35,6 +35,7 @@ Platform-neutral scenarios that every native core (Kotlin, Swift) must satisfy (
 | `syncRetryBaseDelay` | 10 | seconds |
 | `syncRetryMaxDelay` | 300 | seconds |
 | `maxRecordsToPersist` | -1 (unlimited) | fixes |
+| `geofenceLimit` | 20 | geofences |
 
 ### Inputs
 
@@ -46,7 +47,11 @@ Platform-neutral scenarios that every native core (Kotlin, Swift) must satisfy (
 | `motionSignal` | | Engine reports movement while stationary (Android: significant motion; iOS: stationary-region exit). |
 | `tick` | | Time passes; no other input. |
 | `connectivity` | `online` | Network reachability changed. Initially online. |
-| `restart` | | Process killed and relaunched. Persisted: enabled/tracking state, buffer. Lost: anchor, last recorded fix, retry backoff. |
+| `restart` | | Process killed and relaunched. Persisted: enabled/tracking state, buffer, geofence registry and per-geofence inside state. Lost: anchor, last recorded fix, retry backoff. |
+| `addGeofence` | `id`, `dx`, `dy`, `radius`, optional `notifyOnEntry`, `notifyOnExit` (both default true) | Register a geofence, or replace one with the same id. `dx`/`dy` use the same origin as `fix`. |
+| `removeGeofence` | `id` | Remove a geofence. |
+| `geofenceCheck` | `dx`, `dy` | A position reading used only for geofence evaluation: not recorded, no effect on tracking state. Engines send these periodically while stationary. |
+| `geofenceTransition` | `id`, `action` (`ENTER` or `EXIT`) | A native region signal (iOS), taken as authoritative. |
 
 ### Expectations
 
@@ -57,8 +62,10 @@ Platform-neutral scenarios that every native core (Kotlin, Swift) must satisfy (
 | `events` | Exact ordered list of events emitted during this step. |
 | `requests` | Exact ordered list of upload requests issued during this step, each a list of fix ids, oldest first. |
 | `buffer` | Exact ordered list of fix ids in the buffer after the step. |
+| `result` | Outcome of the step's geofence command: `ok`, `limit`, `invalid` (add), `removed`, `unknown` (remove). |
+| `geofences` | Exact ordered list of registered geofence ids after the step, in registration order. |
 
-Events: `{type:"enabledchange", enabled}`, `{type:"motionchange", isMoving}`, `{type:"location", id}`, `{type:"buffer-overflow", dropped:[ids]}`.
+Events: `{type:"enabledchange", enabled}`, `{type:"motionchange", isMoving}`, `{type:"location", id}`, `{type:"buffer-overflow", dropped:[ids]}`, `{type:"geofence", id, action}` with `action` `ENTER` or `EXIT`.
 
 ## Rules
 
@@ -84,6 +91,14 @@ Events: `{type:"enabledchange", enabled}`, `{type:"motionchange", isMoving}`, `{
 15. `connectivity online:true` clears any pending retry and failure count and triggers an attempt. Offline makes no attempt.
 16. `restart` clears the retry and failure count, and triggers an attempt if the buffer is not empty and the device is online. The tracking state is restored: `moving` restarts stop detection from the next fix, `stationary` stays armed.
 
+**Geofences**
+17. `addGeofence` with a non-finite or non-positive `radius` returns `invalid` and changes nothing. If the id already exists the geofence is replaced in place (registration order kept) and its inside state resets to unknown; result `ok`. Otherwise, if the registry already holds `geofenceLimit` geofences the result is `limit` and nothing changes; else it is appended and the result is `ok`.
+18. `removeGeofence` returns `removed` if the id existed, else `unknown`.
+19. Geofences are evaluated, in registration order, after the step's recording logic: for every fix while `moving` (whether or not it was recorded), and for every `geofenceCheck` while `moving` or `stationary`. Nothing is evaluated while `stopped`. Geofence events follow the step's `location` event.
+20. A reading is inside a geofence when its distance to the centre is at most `radius`. Each geofence is `unknown`, `inside` or `outside`, and every reading updates it. `ENTER` is emitted when a reading is inside and the state was not `inside`, only if `notifyOnEntry`. `EXIT` is emitted when a reading is outside and the state was `inside`, only if `notifyOnExit`. An outside reading on `unknown` just sets `outside`. An inside reading on `unknown` therefore emits `ENTER` (initial trigger).
+21. `geofenceTransition` is ignored while `stopped`. Otherwise `ENTER` or `EXIT` sets the state and emits under the same notify rules, unless the state already equals the signalled one, in which case it is ignored.
+22. The registry and every geofence's state persist across `restart`, so a restart does not repeat an `ENTER`.
+
 ## Not yet specified
 
-Geofences, heartbeat, odometer, accuracy filtering, HTTP 401/403 pausing, speed-based stop detection (AOSP engine). Each needs fixtures before its native implementation starts.
+Heartbeat, odometer, accuracy filtering, HTTP 401/403 pausing, geofence dwell, and geofence-only tracking without `start`. Each needs fixtures before its native implementation starts.

@@ -46,8 +46,39 @@ public struct TrackingConfig {
   public var syncRetryBaseDelay: Int64 = 10
   public var syncRetryMaxDelay: Int64 = 300
   public var maxRecordsToPersist: Int = -1
+  public var geofenceLimit: Int = 20
 
   public init() {}
+}
+
+public struct Geofence: Equatable {
+  public let id: String
+  public let lat: Double
+  public let lon: Double
+  public let radius: Double
+  public let notifyOnEntry: Bool
+  public let notifyOnExit: Bool
+
+  public init(
+    id: String, lat: Double, lon: Double, radius: Double,
+    notifyOnEntry: Bool = true, notifyOnExit: Bool = true
+  ) {
+    self.id = id
+    self.lat = lat
+    self.lon = lon
+    self.radius = radius
+    self.notifyOnEntry = notifyOnEntry
+    self.notifyOnExit = notifyOnExit
+  }
+}
+
+public enum GeofenceAction: String {
+  case enter = "ENTER"
+  case exit = "EXIT"
+}
+
+public enum GeofenceResult: String {
+  case ok, limit, invalid, removed, unknown
 }
 
 public enum CoreEvent: Equatable {
@@ -55,6 +86,7 @@ public enum CoreEvent: Equatable {
   case motionChange(Bool)
   case location(String)
   case bufferOverflow([String])
+  case geofence(id: String, action: GeofenceAction)
 }
 
 public struct UploadRequest: Equatable {
@@ -64,4 +96,11 @@ public struct UploadRequest: Equatable {
 public struct Output {
   public let events: [CoreEvent]
   public let upload: UploadRequest?
+  public let result: GeofenceResult?
+
+  public init(events: [CoreEvent], upload: UploadRequest?, result: GeofenceResult? = nil) {
+    self.events = events
+    self.upload = upload
+    self.result = result
+  }
 }

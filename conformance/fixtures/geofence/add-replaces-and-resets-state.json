@@ -1,0 +1,90 @@
+{
+  "name": "add-replaces-and-resets-state",
+  "description": "Re-adding an id replaces the geofence and resets its state, so ENTER fires again.",
+  "config": {
+    "autoSync": false,
+    "stopTimeout": 1
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "addGeofence",
+        "id": "g1",
+        "dx": 0,
+        "dy": 0,
+        "radius": 50
+      },
+      "expect": {
+        "result": "ok"
+      }
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 2,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 0
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f1"
+          },
+          {
+            "type": "geofence",
+            "id": "g1",
+            "action": "ENTER"
+          }
+        ]
+      }
+    },
+    {
+      "at": 3,
+      "input": {
+        "type": "addGeofence",
+        "id": "g1",
+        "dx": 0,
+        "dy": 0,
+        "radius": 50
+      },
+      "expect": {
+        "result": "ok",
+        "geofences": [
+          "g1"
+        ]
+      }
+    },
+    {
+      "at": 4,
+      "input": {
+        "type": "fix",
+        "id": "f2",
+        "dx": 0,
+        "dy": 20
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f2"
+          },
+          {
+            "type": "geofence",
+            "id": "g1",
+            "action": "ENTER"
+          }
+        ]
+      }
+    }
+  ]
+}

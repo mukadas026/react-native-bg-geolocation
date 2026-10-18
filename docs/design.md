@@ -160,7 +160,7 @@ Minimal plugin for Expo 57 prebuild/EAS: Android manifest permissions, `location
 |---|---|---|
 | 1 | Scaffold, conformance spec, fixtures, reference model | Done |
 | 2 | Kotlin and Swift cores passing the fixtures | Done |
-| 3 | Android runtime: AOSP engine and fallback chain, SQLite, uploader, foreground service, boot resume, TurboModule | Done; real-motion, Doze and offline checks pending |
+| 3 | Android runtime: AOSP engine and fallback chain, SQLite, uploader, foreground service, boot resume, TurboModule | Done for the AOSP engine only; the Fused engine is not built; real-motion, Doze and offline checks pending |
 | 4 | iOS runtime: CoreLocation engine, stationary region, relaunch path, TurboModule | Built and simulator-verified; device background wake-up unverified |
 | 5 | Geofences (both platforms), permission flow, capability flags | Not started |
 | 6 | Expo config plugin, example app polish, integration into the two host apps | Not started |

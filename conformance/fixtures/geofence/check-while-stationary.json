@@ -1,0 +1,104 @@
+{
+  "name": "check-while-stationary",
+  "description": "A geofenceCheck while stationary can emit events without recording or resuming.",
+  "config": {
+    "autoSync": false,
+    "stopTimeout": 1
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "addGeofence",
+        "id": "g1",
+        "dx": 0,
+        "dy": 200,
+        "radius": 50
+      },
+      "expect": {
+        "result": "ok"
+      }
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "start"
+      },
+      "expect": {}
+    },
+    {
+      "at": 2,
+      "input": {
+        "type": "fix",
+        "id": "f1",
+        "dx": 0,
+        "dy": 0
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "location",
+            "id": "f1"
+          }
+        ]
+      }
+    },
+    {
+      "at": 62,
+      "input": {
+        "type": "tick"
+      },
+      "expect": {
+        "state": "stationary",
+        "events": [
+          {
+            "type": "motionchange",
+            "isMoving": false
+          }
+        ]
+      }
+    },
+    {
+      "at": 100,
+      "input": {
+        "type": "geofenceCheck",
+        "dx": 0,
+        "dy": 180
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "geofence",
+            "id": "g1",
+            "action": "ENTER"
+          }
+        ],
+        "state": "stationary",
+        "buffer": [
+          "f1"
+        ]
+      }
+    },
+    {
+      "at": 200,
+      "input": {
+        "type": "geofenceCheck",
+        "dx": 0,
+        "dy": 400
+      },
+      "expect": {
+        "events": [
+          {
+            "type": "geofence",
+            "id": "g1",
+            "action": "EXIT"
+          }
+        ],
+        "state": "stationary",
+        "buffer": [
+          "f1"
+        ]
+      }
+    }
+  ]
+}

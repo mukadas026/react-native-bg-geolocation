@@ -8,6 +8,15 @@ interface FixStore {
   fun size(): Int
 }
 
+data class StoredGeofence(val geofence: Geofence, val inside: Boolean?)
+
+interface GeofenceStore {
+  fun all(): List<StoredGeofence>
+  fun save(geofence: Geofence, inside: Boolean?)
+  fun setInside(id: String, inside: Boolean?)
+  fun remove(id: String)
+}
+
 interface StateStore {
   var trackingState: TrackingState
 }
@@ -34,4 +43,22 @@ class InMemoryFixStore : FixStore {
 
 class InMemoryStateStore : StateStore {
   override var trackingState: TrackingState = TrackingState.STOPPED
+}
+
+class InMemoryGeofenceStore : GeofenceStore {
+  private val entries = LinkedHashMap<String, StoredGeofence>()
+
+  override fun all(): List<StoredGeofence> = entries.values.toList()
+
+  override fun save(geofence: Geofence, inside: Boolean?) {
+    entries[geofence.id] = StoredGeofence(geofence, inside)
+  }
+
+  override fun setInside(id: String, inside: Boolean?) {
+    entries[id]?.let { entries[id] = it.copy(inside = inside) }
+  }
+
+  override fun remove(id: String) {
+    entries.remove(id)
+  }
 }

@@ -33,8 +33,12 @@ final class ConformanceTests: XCTestCase {
 
     let fixStore = InMemoryFixStore()
     let stateStore = InMemoryStateStore()
+    let geofenceStore = InMemoryGeofenceStore()
     var online = true
-    var core = TrackingCore(config: config, fixStore: fixStore, stateStore: stateStore, online: online)
+    var core = TrackingCore(
+      config: config, fixStore: fixStore, stateStore: stateStore, online: online,
+      geofenceStore: geofenceStore
+    )
 
     let steps = try XCTUnwrap(fixture["steps"] as? [[String: Any]])
     for (index, step) in steps.enumerated() {
@@ -62,14 +66,43 @@ final class ConformanceTests: XCTestCase {
         online = input["online"] as! Bool
         output = core.onConnectivity(online: online, at: at)
       case "restart":
-        core = TrackingCore(config: config, fixStore: fixStore, stateStore: stateStore, online: online)
+        core = TrackingCore(
+          config: config, fixStore: fixStore, stateStore: stateStore, online: online,
+          geofenceStore: geofenceStore
+        )
         output = core.onLaunch(at: at)
+      case "addGeofence":
+        let geofence = Geofence(
+          id: input["id"] as! String,
+          lat: (input["dy"] as! NSNumber).doubleValue / metersPerDegree,
+          lon: (input["dx"] as! NSNumber).doubleValue / metersPerDegree,
+          radius: (input["radius"] as! NSNumber).doubleValue,
+          notifyOnEntry: input["notifyOnEntry"] as? Bool ?? true,
+          notifyOnExit: input["notifyOnExit"] as? Bool ?? true
+        )
+        output = core.addGeofence(geofence, at: at)
+      case "removeGeofence":
+        output = core.removeGeofence(id: input["id"] as! String, at: at)
+      case "geofenceCheck":
+        let fix = Fix(
+          id: "check",
+          lat: (input["dy"] as! NSNumber).doubleValue / metersPerDegree,
+          lon: (input["dx"] as! NSNumber).doubleValue / metersPerDegree
+        )
+        output = core.onGeofenceCheck(fix, at: at)
+      case "geofenceTransition":
+        output = core.onGeofenceTransition(
+          id: input["id"] as! String,
+          action: GeofenceAction(rawValue: input["action"] as! String)!,
+          at: at
+        )
       default:
         XCTFail("\(where_): unknown input")
         return
       }
 
       var events = output.events
+      let geofenceResult = output.result
       var requests: [[String]] = []
       while let upload = output.upload {
         requests.append(upload.fixes.map { $0.id })
@@ -92,6 +125,12 @@ final class ConformanceTests: XCTestCase {
       if let expected = expect["requests"] as? [[String]] {
         XCTAssertEqual(requests, expected, "\(where_): requests")
       }
+      if let expected = expect["result"] as? String {
+        XCTAssertEqual(geofenceResult?.rawValue, expected, "\(where_): result")
+      }
+      if let expected = expect["geofences"] as? [String] {
+        XCTAssertEqual(core.geofenceIds, expected, "\(where_): geofences")
+      }
       if let expected = expect["buffer"] as? [String] {
         XCTAssertEqual(fixStore.oldest(limit: Int.max).map { $0.id }, expected, "\(where_): buffer")
       }
@@ -109,6 +148,7 @@ final class ConformanceTests: XCTestCase {
     if let v = json["syncRetryBaseDelay"] as? Int { config.syncRetryBaseDelay = Int64(v) }
     if let v = json["syncRetryMaxDelay"] as? Int { config.syncRetryMaxDelay = Int64(v) }
     if let v = json["maxRecordsToPersist"] as? Int { config.maxRecordsToPersist = v }
+    if let v = json["geofenceLimit"] as? Int { config.geofenceLimit = v }
     return config
   }
 
@@ -118,6 +158,7 @@ final class ConformanceTests: XCTestCase {
     case .motionChange(let isMoving): return "motionchange:\(isMoving)"
     case .location(let id): return "location:\(id)"
     case .bufferOverflow(let dropped): return "buffer-overflow:\(dropped.joined(separator: ","))"
+    case .geofence(let id, let action): return "geofence:\(id):\(action.rawValue)"
     }
   }
 
@@ -127,6 +168,7 @@ final class ConformanceTests: XCTestCase {
     case "motionchange": return "motionchange:\(event["isMoving"] as! Bool)"
     case "location": return "location:\(event["id"] as! String)"
     case "buffer-overflow": return "buffer-overflow:\((event["dropped"] as! [String]).joined(separator: ","))"
+    case "geofence": return "geofence:\(event["id"] as! String):\(event["action"] as! String)"
     default: return "unknown"
     }
   }

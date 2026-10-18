@@ -1,0 +1,60 @@
+{
+  "name": "replace-keeps-registration-order",
+  "description": "Replacing a geofence keeps its position in the registry.",
+  "config": {
+    "autoSync": false,
+    "stopTimeout": 1
+  },
+  "steps": [
+    {
+      "at": 0,
+      "input": {
+        "type": "addGeofence",
+        "id": "a",
+        "dx": 0,
+        "dy": 0,
+        "radius": 10
+      },
+      "expect": {
+        "result": "ok",
+        "geofences": [
+          "a"
+        ]
+      }
+    },
+    {
+      "at": 1,
+      "input": {
+        "type": "addGeofence",
+        "id": "b",
+        "dx": 0,
+        "dy": 0,
+        "radius": 10
+      },
+      "expect": {
+        "result": "ok",
+        "geofences": [
+          "a",
+          "b"
+        ]
+      }
+    },
+    {
+      "at": 2,
+      "input": {
+        "type": "addGeofence",
+        "id": "a",
+        "dx": 0,
+        "dy": 0,
+        "radius": 20
+      },
+      "expect": {
+        "result": "ok",
+        "geofences": [
+          "a",
+          "b"
+        ]
+      }
+    }
+  ]
+}

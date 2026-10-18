@@ -1,5 +1,9 @@
 import com.bggeolocation.core.CoreEvent
 import com.bggeolocation.core.Fix
+import com.bggeolocation.core.Geofence
+import com.bggeolocation.core.GeofenceAction
+import com.bggeolocation.core.GeofenceResult
+import com.bggeolocation.core.InMemoryGeofenceStore
 import com.bggeolocation.core.InMemoryFixStore
 import com.bggeolocation.core.InMemoryStateStore
 import com.bggeolocation.core.Output
@@ -34,8 +38,9 @@ class ConformanceTest {
 
     val fixStore = InMemoryFixStore()
     val stateStore = InMemoryStateStore()
+    val geofenceStore = InMemoryGeofenceStore()
     var online = true
-    var core = TrackingCore(config, fixStore, stateStore, online)
+    var core = TrackingCore(config, fixStore, stateStore, online, geofenceStore)
 
     val steps = fixture.getJSONArray("steps")
     for (index in 0 until steps.length()) {
@@ -63,14 +68,36 @@ class ConformanceTest {
           core.onConnectivity(online, at)
         }
         "restart" -> {
-          core = TrackingCore(config, fixStore, stateStore, online)
+          core = TrackingCore(config, fixStore, stateStore, online, geofenceStore)
           core.onLaunch(at)
         }
+        "addGeofence" -> core.addGeofence(
+          Geofence(
+            id = input.getString("id"),
+            lat = input.getDouble("dy") / METERS_PER_DEGREE,
+            lon = input.getDouble("dx") / METERS_PER_DEGREE,
+            radius = input.getDouble("radius"),
+            notifyOnEntry = input.optBoolean("notifyOnEntry", true),
+            notifyOnExit = input.optBoolean("notifyOnExit", true),
+          ),
+          at,
+        )
+        "removeGeofence" -> core.removeGeofence(input.getString("id"), at)
+        "geofenceCheck" -> core.onGeofenceCheck(
+          Fix("check", input.getDouble("dy") / METERS_PER_DEGREE, input.getDouble("dx") / METERS_PER_DEGREE),
+          at,
+        )
+        "geofenceTransition" -> core.onGeofenceTransition(
+          input.getString("id"),
+          GeofenceAction.valueOf(input.getString("action")),
+          at,
+        )
         else -> error("$where: unknown input")
       }
 
       val events = mutableListOf<CoreEvent>()
       val requests = mutableListOf<List<String>>()
+      val geofenceResult: GeofenceResult? = output.result
       events += output.events
       while (output.upload != null) {
         requests += output.upload!!.fixes.map { it.id }
@@ -95,6 +122,12 @@ class ConformanceTest {
         }
         assertEquals(expected, requests, "$where: requests")
       }
+      if (expect.has("result")) {
+        assertEquals(expect.getString("result"), geofenceResult?.name?.lowercase(), "$where: result")
+      }
+      if (expect.has("geofences")) {
+        assertEquals(expect.getJSONArray("geofences").toList { it as String }, core.geofenceIds, "$where: geofences")
+      }
       if (expect.has("buffer")) {
         val expected = expect.getJSONArray("buffer").toList { it as String }
         assertEquals(expected, fixStore.oldest(Int.MAX_VALUE).map { it.id }, "$where: buffer")
@@ -114,6 +147,7 @@ class ConformanceTest {
       syncRetryBaseDelay = json.optLong("syncRetryBaseDelay", defaults.syncRetryBaseDelay),
       syncRetryMaxDelay = json.optLong("syncRetryMaxDelay", defaults.syncRetryMaxDelay),
       maxRecordsToPersist = json.optInt("maxRecordsToPersist", defaults.maxRecordsToPersist),
+      geofenceLimit = json.optInt("geofenceLimit", defaults.geofenceLimit),
     )
   }
 
@@ -122,6 +156,7 @@ class ConformanceTest {
     is CoreEvent.MotionChange -> "motionchange:${event.isMoving}"
     is CoreEvent.Location -> "location:${event.id}"
     is CoreEvent.BufferOverflow -> "buffer-overflow:${event.dropped.joinToString(",")}"
+    is CoreEvent.GeofenceTransition -> "geofence:${event.id}:${event.action.name}"
   }
 
   private fun expectedEvent(json: Any): String {
@@ -131,6 +166,7 @@ class ConformanceTest {
       "motionchange" -> "motionchange:${event.getBoolean("isMoving")}"
       "location" -> "location:${event.getString("id")}"
       "buffer-overflow" -> "buffer-overflow:${event.getJSONArray("dropped").toList { it as String }.joinToString(",")}"
+      "geofence" -> "geofence:${event.getString("id")}:${event.getString("action")}"
       else -> error("unknown event type $type")
     }
   }
