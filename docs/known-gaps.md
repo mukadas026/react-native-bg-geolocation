@@ -1,6 +1,6 @@
 # Known gaps
 
-What is unverified, unspecified or unbuilt as of the middle of milestone 5 (Android geofences, permissions and capabilities done; iOS side pending). Each item says what would close it. Items marked **device** need physical hardware.
+What is unverified, unspecified or unbuilt as of the end of milestone 5. Milestone 6 (Expo plugin, host-app integration) is not finished. Each item says what would close it. Items marked **device** need physical hardware.
 
 ## 1. Unverified behavior
 
@@ -13,6 +13,8 @@ What is unverified, unspecified or unbuilt as of the middle of milestone 5 (Andr
 | Significant-change safety net delivers in time | **Unverified.** Registration is confirmed by logs, delivery is not. | **device**, longer travel (kilometres). |
 | Always-authorization upgrade, downgrade and the background-location indicator | Partly seen: Always was granted on the phone. Downgrade handling is untested. | **device**: revoke to While Using mid-session and check the reported failure. |
 | Battery effect of the stationary-region approach | Unmeasured. | **device**: multi-hour comparison. |
+| Native region monitoring for geofences | **Failed in the simulator** with `kCLErrorDomain` error 5 (`kCLErrorRegionMonitoringFailure`), reported through the new `monitoringDidFailFor` handling. Geofences still fired through the core's fix evaluation while moving. Whether native regions work (and wake the app while stationary) is unknown. | **device**: add a geofence, stand still until stationary, then cross the boundary. |
+| iOS permission request (`requestPermission`) | Unverified. The simulator cannot be tapped from the command line, so the system dialogs were never driven; only the already-granted path ran. | **device**: fresh install, tap Permission, accept both prompts. |
 
 Verified in the iPhone 17 simulator (iOS 27) only: start, record, distance filter, upload, stop timeout, and resume when a continuous simulated route leaves the region. Teleporting with `simctl location set` does not wake the app.
 
@@ -35,7 +37,9 @@ Verified in the iPhone 17 simulator (iOS 27) only: start, record, distance filte
 
 - **The Fused engine is not implemented.** ADR-0002 makes both Android engines first-class, but only `AospEngine` exists. Play-Services devices (such as the store-distributed smart-attendance app) currently run on the AOSP engine, which works there but forgoes ActivityRecognition labels, native geofencing and Fused battery behavior. `engine: 'auto'` and `engine: 'aosp'` are not wired up yet.
 - **No automated tests for the platform layers.** Only the pure cores (Kotlin, Swift) and the TypeScript reference model run in CI-able suites. The SQLite stores, uploaders, engines and runtimes have none.
-- **iOS geofences, permission flow and capabilities are not built.** The iOS module rejects `addGeofence`, `addGeofences`, `removeGeofence`, `removeGeofences`, `getGeofences`, `getGeofence`, `geofenceExists`, `requestPermission`, `getProviderState` and `getCapabilities` with `E_UNIMPLEMENTED`. The core already supports them; the iOS runtime must add a geofence store, native region monitoring (limit 19, see `design.md` 14b), `requestState` for the initial trigger, and the promise-based permission request.
+- **No fallback when iOS native geofence regions fail.** The engine reports `monitoringDidFailFor` as an error, but while stationary there is then no other source of geofence events (Android polls; iOS relies on regions). A failed region should trigger a periodic one-shot check like Android's.
+- **iOS geofence limit is 19, not 20.** One of the 20 region slots is the stationary region; `getCapabilities().geofenceLimit` reports it. This departs from the original "20 on both platforms" decision and has not been explicitly approved.
+- **Dev-only: the iOS example can crash at launch** with `No script URL provided` when React Native's packager check fails in the simulator (it did here even though Metro answered). Setting `RCT_jsLocation` to `127.0.0.1:8081` (`xcrun simctl spawn <udid> defaults write bggeolocation.example RCT_jsLocation 127.0.0.1:8081`) fixed it. The cause was not found.
 - **Android service restart from the background.** The alarm receiver restarts the runtime but cannot start the foreground service; recovery relies on `START_STICKY` and the boot receiver.
 - **`ready()` rebuilds the core.** Calling it again, or changing config, resets the stop-detection anchor and last-recorded fix.
 - **Config changes are not partial.** There is no `setConfig`; `ready()` replaces the whole config.
@@ -54,12 +58,12 @@ Not yet in `conformance/README.md`, so no fixtures exist: heartbeat, odometer, a
 
 Implemented: `ready`, `start`, `stop`, `changePace`, `getState`, `getCount`, `getLocations`, `destroyLocations`, and the events `onLocation`, `onMotionChange`, `onEnabledChange`, `onBufferOverflow`, `onMotionSource`, `onError`.
 
-Also implemented on Android only: `addGeofence`, `addGeofences`, `removeGeofence`, `removeGeofences`, `getGeofences`, `getGeofence`, `geofenceExists`, `requestPermission`, `getProviderState`, `getCapabilities`, and the events `onGeofence` and `onProviderChange`. iOS rejects these (see section 2). `onGeofencesChange` is deferred.
+Also implemented on both platforms: `addGeofence`, `addGeofences`, `removeGeofence`, `removeGeofences`, `getGeofences`, `getGeofence`, `geofenceExists`, `requestPermission`, `getProviderState`, `getCapabilities`, and the events `onGeofence` and `onProviderChange`. `onGeofencesChange` is deferred.
 
 Missing everywhere: `setConfig`, `reset`, `getCurrentPosition`, `watchPosition`, `stopWatchPosition`, `insertLocation`, `destroyLocation`, `sync`, odometer, `getDeviceInfo`, `isPowerSaveMode`, `isIgnoringBatteryOptimizations`, `requestSettings`, `showSettings`, `beginBackgroundTask`/`finish`, `registerHeadlessTask`, `onHttp`, `onHeartbeat`, `onConnectivityChange`, `onPowerSaveChange`. Optional best-effort headless JS is not implemented.
 
 ## 5. Process gaps
 
-- Milestone 5 is half done (Android) and milestone 6 (Expo config plugin, integration into the two host apps) is not started. Integrating into the host apps edits repositories outside this one, so it needs your go-ahead.
+- Milestone 6 (Expo config plugin, integration into the two host apps) is not finished. Integrating into the host apps edits repositories outside this one, so it needs your go-ahead.
 - The host apps still use their own location code and `react-native-permissions` for location, which must be removed on adoption.
 - Example app: title and state text are dark-on-black in dark mode.

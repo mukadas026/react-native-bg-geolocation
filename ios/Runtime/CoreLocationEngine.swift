@@ -6,10 +6,13 @@ protocol EngineCallbacks: AnyObject {
   func engineDidSignalMotion()
   func engineDidReportMotionSource(_ source: String)
   func engineDidFail(_ message: String)
+  func engineDidTransition(identifier: String, action: GeofenceAction)
+  func engineDidChangeAuthorization()
 }
 
 final class CoreLocationEngine: NSObject, CLLocationManagerDelegate {
   private static let regionIdentifier = "bggeo.stationary"
+  private static let geofencePrefix = "bggeo.gf."
   private static let minimumRegionRadius: CLLocationDistance = 100
 
   private enum Mode {
@@ -26,6 +29,7 @@ final class CoreLocationEngine: NSObject, CLLocationManagerDelegate {
   private var awaitingRegionFix = false
   private var verifyingExistingRegion = false
   private var pendingAuthorizationAction: (() -> Void)?
+  private var permissionWaiters: [() -> Void] = []
 
   private(set) var motionSource: String?
 
@@ -134,20 +138,36 @@ final class CoreLocationEngine: NSObject, CLLocationManagerDelegate {
     case .authorizedWhenInUse:
       manager.requestAlwaysAuthorization()
       runPendingAuthorizationAction()
+      if !permissionWaiters.isEmpty {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+          self?.finishPermissionWaiters()
+        }
+      }
     case .authorizedAlways:
       runPendingAuthorizationAction()
+      finishPermissionWaiters()
     case .denied, .restricted:
       pendingAuthorizationAction = nil
       callbacks?.engineDidFail("location permission denied")
+      finishPermissionWaiters()
     default:
       break
     }
+    callbacks?.engineDidChangeAuthorization()
   }
 
   func locationManager(
     _ manager: CLLocationManager, didDetermineState state: CLRegionState, for region: CLRegion
   ) {
-    NSLog("[BgGeo] region state %d", state.rawValue)
+    NSLog("[BgGeo] region state %d for %@", state.rawValue, region.identifier)
+    if let id = geofenceId(region) {
+      switch state {
+      case .inside: callbacks?.engineDidTransition(identifier: id, action: .enter)
+      case .outside: callbacks?.engineDidTransition(identifier: id, action: .exit)
+      default: break
+      }
+      return
+    }
     guard region.identifier == Self.regionIdentifier, case .armed = mode, state == .outside
     else { return }
     signalMotion()
@@ -163,8 +183,18 @@ final class CoreLocationEngine: NSObject, CLLocationManagerDelegate {
     callbacks?.engineDidFail("region monitoring failed: \(error.localizedDescription)")
   }
 
+  func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
+    if let id = geofenceId(region) {
+      callbacks?.engineDidTransition(identifier: id, action: .enter)
+    }
+  }
+
   func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
     NSLog("[BgGeo] region exit %@", region.identifier)
+    if let id = geofenceId(region) {
+      callbacks?.engineDidTransition(identifier: id, action: .exit)
+      return
+    }
     guard region.identifier == Self.regionIdentifier, case .armed = mode else { return }
     signalMotion()
   }
@@ -172,6 +202,78 @@ final class CoreLocationEngine: NSObject, CLLocationManagerDelegate {
   func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
     if (error as? CLError)?.code == .locationUnknown { return }
     callbacks?.engineDidFail("location error: \(error.localizedDescription)")
+  }
+
+  func syncGeofences(_ geofences: [Geofence]) {
+    let wanted = Dictionary(
+      uniqueKeysWithValues: geofences.map { (Self.geofencePrefix + $0.id, $0) }
+    )
+    var kept = Set<String>()
+
+    for region in manager.monitoredRegions where region.identifier.hasPrefix(Self.geofencePrefix) {
+      guard let geofence = wanted[region.identifier],
+        let circular = region as? CLCircularRegion,
+        circular.center.latitude == geofence.lat,
+        circular.center.longitude == geofence.lon,
+        circular.radius == min(geofence.radius, manager.maximumRegionMonitoringDistance)
+      else {
+        manager.stopMonitoring(for: region)
+        continue
+      }
+      kept.insert(region.identifier)
+    }
+
+    for (identifier, geofence) in wanted where !kept.contains(identifier) {
+      let region = CLCircularRegion(
+        center: CLLocationCoordinate2D(latitude: geofence.lat, longitude: geofence.lon),
+        radius: min(geofence.radius, manager.maximumRegionMonitoringDistance),
+        identifier: identifier
+      )
+      region.notifyOnEntry = true
+      region.notifyOnExit = true
+      manager.startMonitoring(for: region)
+      manager.requestState(for: region)
+    }
+  }
+
+  var authorizationDescription: String {
+    switch manager.authorizationStatus {
+    case .authorizedAlways: return "always"
+    case .authorizedWhenInUse: return "whenInUse"
+    case .notDetermined: return "notDetermined"
+    default: return "denied"
+    }
+  }
+
+  var accuracyDescription: String {
+    manager.accuracyAuthorization == .fullAccuracy ? "full" : "reduced"
+  }
+
+  func requestPermission(completion: @escaping () -> Void) {
+    switch manager.authorizationStatus {
+    case .notDetermined:
+      permissionWaiters.append(completion)
+      manager.requestWhenInUseAuthorization()
+    case .authorizedWhenInUse:
+      permissionWaiters.append(completion)
+      manager.requestAlwaysAuthorization()
+      DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+        self?.finishPermissionWaiters()
+      }
+    default:
+      completion()
+    }
+  }
+
+  private func finishPermissionWaiters() {
+    let waiters = permissionWaiters
+    permissionWaiters = []
+    waiters.forEach { $0() }
+  }
+
+  private func geofenceId(_ region: CLRegion) -> String? {
+    guard region.identifier.hasPrefix(Self.geofencePrefix) else { return nil }
+    return String(region.identifier.dropFirst(Self.geofencePrefix.count))
   }
 
   private func requestAuthorization(then action: @escaping () -> Void) {

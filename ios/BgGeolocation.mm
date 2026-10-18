@@ -83,62 +83,80 @@
   resolve(@YES);
 }
 
-static void rejectUnimplemented(RCTPromiseRejectBlock reject, NSString *method)
-{
-  reject(
-      @"E_UNIMPLEMENTED",
-      [NSString stringWithFormat:@"%@ is not implemented on iOS yet", method],
-      nil);
-}
-
 - (void)addGeofence:(NSDictionary *)geofence resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
 {
-  rejectUnimplemented(reject, @"addGeofence");
+  [self addGeofences:@[ geofence ] resolve:resolve reject:reject];
 }
 
 - (void)addGeofences:(NSArray *)geofences resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
 {
-  rejectUnimplemented(reject, @"addGeofences");
+  [BgGeoRuntime.shared addGeofences:geofences completion:^(NSError *error) {
+    if (error) {
+      reject(@"E_GEOFENCE", error.localizedDescription, error);
+    } else {
+      resolve(@YES);
+    }
+  }];
 }
 
 - (void)removeGeofence:(NSString *)identifier resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
 {
-  rejectUnimplemented(reject, @"removeGeofence");
+  [BgGeoRuntime.shared removeGeofences:@[ identifier ] completion:^{
+    resolve(@YES);
+  }];
 }
 
 - (void)removeGeofences:(NSArray *)identifiers resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
 {
-  rejectUnimplemented(reject, @"removeGeofences");
+  [BgGeoRuntime.shared removeGeofences:identifiers completion:^{
+    resolve(@YES);
+  }];
 }
 
 - (void)getGeofences:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
 {
-  rejectUnimplemented(reject, @"getGeofences");
+  resolve(BgGeoRuntime.shared.geofenceList);
 }
 
 - (void)getGeofence:(NSString *)identifier resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
 {
-  rejectUnimplemented(reject, @"getGeofence");
+  for (NSDictionary *geofence in BgGeoRuntime.shared.geofenceList) {
+    if ([geofence[@"identifier"] isEqualToString:identifier]) {
+      resolve(geofence);
+      return;
+    }
+  }
+  reject(@"E_NOT_FOUND", [NSString stringWithFormat:@"no geofence '%@'", identifier], nil);
 }
 
 - (void)geofenceExists:(NSString *)identifier resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
 {
-  rejectUnimplemented(reject, @"geofenceExists");
+  for (NSDictionary *geofence in BgGeoRuntime.shared.geofenceList) {
+    if ([geofence[@"identifier"] isEqualToString:identifier]) {
+      resolve(@YES);
+      return;
+    }
+  }
+  resolve(@NO);
 }
 
 - (void)requestPermission:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
 {
-  rejectUnimplemented(reject, @"requestPermission");
+  [BgGeoRuntime.shared requestPermissionWithCompletion:^(NSDictionary<NSString *, id> *state) {
+    resolve(state);
+  }];
 }
 
 - (void)getProviderState:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
 {
-  rejectUnimplemented(reject, @"getProviderState");
+  [BgGeoRuntime.shared providerStateWithCompletion:^(NSDictionary<NSString *, id> *state) {
+    resolve(state);
+  }];
 }
 
 - (void)getCapabilities:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
 {
-  rejectUnimplemented(reject, @"getCapabilities");
+  resolve(BgGeoRuntime.shared.capabilities);
 }
 
 - (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:

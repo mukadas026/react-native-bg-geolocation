@@ -10,6 +10,7 @@ public final class BgGeoRuntime: NSObject, EngineCallbacks {
   @objc public var onEvent: ((String, [String: Any]) -> Void)?
 
   private let fixStore = SqliteFixStore(path: SqliteFixStore.defaultPath())
+  private let geofenceStore = SqliteGeofenceStore(path: SqliteFixStore.defaultPath())
   private let stateStore = UserDefaultsStateStore()
   private let configStore = UserDefaultsConfigStore()
   private let uploader = HttpUploader()
@@ -67,6 +68,83 @@ public final class BgGeoRuntime: NSObject, EngineCallbacks {
     }
   }
 
+  @objc public func addGeofences(
+    _ list: [[String: Any]], completion: @escaping (NSError?) -> Void
+  ) {
+    DispatchQueue.main.async {
+      var failure: NSError?
+      for entry in list {
+        guard let geofence = Self.parseGeofence(entry) else {
+          failure = failure ?? Self.error(2, "invalid geofence")
+          continue
+        }
+        let output = self.ensureCore().addGeofence(geofence, at: self.now())
+        self.apply(output)
+        switch output.result {
+        case .limit:
+          failure = failure ?? Self.error(1, "geofence limit of \(Self.geofenceLimit) reached")
+        case .invalid:
+          failure = failure ?? Self.error(2, "invalid geofence '\(geofence.id)'")
+        default:
+          break
+        }
+      }
+      self.syncNativeGeofences()
+      completion(failure)
+    }
+  }
+
+  @objc public func removeGeofences(_ ids: [String], completion: @escaping () -> Void) {
+    DispatchQueue.main.async {
+      ids.forEach { self.apply(self.ensureCore().removeGeofence(id: $0, at: self.now())) }
+      self.syncNativeGeofences()
+      completion()
+    }
+  }
+
+  @objc public func geofenceList() -> [[String: Any]] {
+    geofenceStore.all().map { stored in
+      let g = stored.geofence
+      return [
+        "identifier": g.id,
+        "latitude": g.lat,
+        "longitude": g.lon,
+        "radius": g.radius,
+        "notifyOnEntry": g.notifyOnEntry,
+        "notifyOnExit": g.notifyOnExit,
+      ]
+    }
+  }
+
+  @objc public func providerState(completion: @escaping ([String: Any]) -> Void) {
+    DispatchQueue.global().async {
+      let enabled = CLLocationManager.locationServicesEnabled()
+      DispatchQueue.main.async { completion(self.providerStateDictionary(enabled: enabled)) }
+    }
+  }
+
+  @objc public func requestPermission(completion: @escaping ([String: Any]) -> Void) {
+    DispatchQueue.main.async {
+      self.engineInstance().requestPermission {
+        self.providerState(completion: completion)
+      }
+    }
+  }
+
+  @objc public func capabilities() -> [String: Any] {
+    [
+      "platform": "ios",
+      "engine": "corelocation",
+      "geofenceLimit": Self.geofenceLimit,
+      "geofenceMinRadius": 100,
+      "activityRecognition": false,
+      "canRelaunchAfterKill": true,
+      "supportsHeadlessJs": false,
+      "managedDevice": false,
+      "motionSource": engine?.motionSource as Any,
+    ]
+  }
+
   @objc public func snapshot() -> [String: Any] {
     let state = stateStore.trackingState
     var result: [String: Any] = [
@@ -110,6 +188,14 @@ public final class BgGeoRuntime: NSObject, EngineCallbacks {
     currentFix = nil
   }
 
+  func engineDidTransition(identifier: String, action: GeofenceAction) {
+    apply(ensureCore().onGeofenceTransition(id: identifier, action: action, at: now()))
+  }
+
+  func engineDidChangeAuthorization() {
+    providerState { [weak self] state in self?.onEvent?("providerchange", state) }
+  }
+
   func engineDidSignalMotion() {
     apply(ensureCore().onMotionSignal(at: now()))
   }
@@ -127,17 +213,59 @@ public final class BgGeoRuntime: NSObject, EngineCallbacks {
   private func ensureCore() -> TrackingCore {
     if let core { return core }
     startNetworkMonitor()
-    if engine == nil { engine = CoreLocationEngine(callbacks: self) }
+    _ = engineInstance()
 
     var tracking = config.tracking
     tracking.autoSync = tracking.autoSync && config.url != nil
+    tracking.geofenceLimit = Self.geofenceLimit
     let created = TrackingCore(
-      config: tracking, fixStore: fixStore, stateStore: stateStore, online: online
+      config: tracking, fixStore: fixStore, stateStore: stateStore, online: online,
+      geofenceStore: geofenceStore
     )
     core = created
     engineMode = .off
     apply(created.onLaunch(at: now()))
+    syncNativeGeofences()
     return created
+  }
+
+  private func engineInstance() -> CoreLocationEngine {
+    if let engine { return engine }
+    let created = CoreLocationEngine(callbacks: self)
+    engine = created
+    return created
+  }
+
+  private func syncNativeGeofences() {
+    engineInstance().syncGeofences(geofenceStore.all().map { $0.geofence })
+  }
+
+  private func providerStateDictionary(enabled: Bool) -> [String: Any] {
+    let engine = engineInstance()
+    return [
+      "enabled": enabled,
+      "authorization": engine.authorizationDescription,
+      "accuracy": engine.accuracyDescription,
+    ]
+  }
+
+  private static let geofenceLimit = 19
+
+  private static func parseGeofence(_ entry: [String: Any]) -> Geofence? {
+    guard let id = entry["identifier"] as? String, !id.isEmpty,
+      let lat = (entry["latitude"] as? NSNumber)?.doubleValue,
+      let lon = (entry["longitude"] as? NSNumber)?.doubleValue,
+      let radius = (entry["radius"] as? NSNumber)?.doubleValue
+    else { return nil }
+    return Geofence(
+      id: id, lat: lat, lon: lon, radius: radius,
+      notifyOnEntry: entry["notifyOnEntry"] as? Bool ?? true,
+      notifyOnExit: entry["notifyOnExit"] as? Bool ?? true
+    )
+  }
+
+  private static func error(_ code: Int, _ message: String) -> NSError {
+    NSError(domain: "BgGeo", code: code, userInfo: [NSLocalizedDescriptionKey: message])
   }
 
   private func apply(_ output: Output) {

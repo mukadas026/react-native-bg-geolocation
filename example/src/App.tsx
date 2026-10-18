@@ -12,6 +12,7 @@ import {
 import BackgroundGeolocation, { type State } from 'react-native-bg-geolocation';
 
 const AUTO_START = false;
+const AUTO_DEMO = false;
 const DEMO_GEOFENCE = {
   identifier: 'demo',
   latitude: 5.605,
@@ -101,6 +102,17 @@ export default function App() {
       async (ready) => {
         setState(ready);
         if (AUTO_START) await BackgroundGeolocation.start();
+        if (AUTO_DEMO) {
+          await BackgroundGeolocation.start();
+          await BackgroundGeolocation.addGeofence(DEMO_GEOFENCE);
+          const capabilities = await BackgroundGeolocation.getCapabilities();
+          const provider = await BackgroundGeolocation.getProviderState();
+          append(`capabilities ${JSON.stringify(capabilities)}`);
+          append(`provider ${JSON.stringify(provider)}`);
+          append(
+            `geofences ${(await BackgroundGeolocation.getGeofences()).length}`
+          );
+        }
       },
       (error: Error) => append(`ready failed: ${error.message}`)
     );

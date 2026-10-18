@@ -1,6 +1,6 @@
 # Design: Background Geolocation Library
 
-Status: milestones 1 to 4 built; milestone 5 done on Android and pending on iOS; 6 pending. Vocabulary is in `../GLOSSARY.md`, decisions in `adr/`, and what is unverified or unbuilt in `known-gaps.md`.
+Status: milestones 1 to 5 built; 6 in progress. Vocabulary is in `../GLOSSARY.md`, decisions in `adr/`, and what is unverified or unbuilt in `known-gaps.md`.
 
 ## 1. Goals and non-goals
 
@@ -162,7 +162,7 @@ Minimal plugin for Expo 57 prebuild/EAS: Android manifest permissions, `location
 | 2 | Kotlin and Swift cores passing the fixtures | Done |
 | 3 | Android runtime: AOSP engine and fallback chain, SQLite, uploader, foreground service, boot resume, TurboModule | Done for the AOSP engine only; the Fused engine is not built; real-motion, Doze and offline checks pending |
 | 4 | iOS runtime: CoreLocation engine, stationary region, relaunch path, TurboModule | Built and simulator-verified; device background wake-up unverified |
-| 5 | Geofences (both platforms), permission flow, capability flags | Core and spec done (17 fixtures, Kotlin and Swift). Android runtime done and emulator-verified. iOS runtime pending (stubs reject with `E_UNIMPLEMENTED`) |
+| 5 | Geofences (both platforms), permission flow, capability flags | Done. Core and spec (17 fixtures, Kotlin and Swift), Android runtime (emulator-verified), iOS runtime (simulator-verified via core evaluation; native regions and permission prompts unverified) |
 | 6 | Expo config plugin, example app polish, integration into the two host apps | Not started |
 
 ## 14. Implementation notes: cores and Android (milestones 2 and 3)
@@ -185,7 +185,8 @@ The example app mirrors NSS's kiosk setup: a `DeviceAdminReceiver`, `device_owne
 - Geofence rules 17 to 22 in `conformance/README.md` are implemented in the Kotlin and Swift cores and pass the shared fixtures. All geofences are evaluated by the core against fixes (while moving), against periodic `geofenceCheck` readings (while stationary), and against native region signals (`geofenceTransition`, for iOS). The registry and per-geofence inside state are persisted so a restart does not repeat an `ENTER`.
 - Android: a `geofence` SQLite table (database version 2), and the AOSP engine takes a one-shot fix every `geofenceCheckInterval` seconds (default 300) while stationary and geofences exist. The API limit is 20. Verified on the emulator: `ENTER` and `EXIT` fired from stationary checks with the tracking state staying `STATIONARY`.
 - `getProviderState()` and `onProviderChange` report location services, authorization (`always`, `whenInUse`, `denied`), accuracy and the individual Android permissions. `requestPermission()` asks in order for foreground location, notifications, activity recognition and background location, skipping anything already granted (so policy-granted managed devices see no prompts). `getCapabilities()` reports engine, geofence limit, relaunch and managed-device flags.
-- **iOS limit decision (open):** iOS monitors geofences natively and the stationary region (ADR-0004) uses one of the 20 region slots, so the iOS limit will be 19 and `getCapabilities().geofenceLimit` will say so. This departs from the earlier "20 on both platforms" decision and needs your agreement.
+- **iOS limit (implemented, awaiting agreement):** iOS monitors geofences natively and the stationary region (ADR-0004) uses one of the 20 region slots, so the iOS limit is 19 and `getCapabilities().geofenceLimit` says so. This departs from the earlier "20 on both platforms" decision.
+- iOS geofences: stored in the same SQLite file, evaluated by the core against fixes while moving, and registered as native regions (`bggeo.gf.<id>`) with `requestState` for the initial trigger. Region enter, exit and determined-state callbacks feed `geofenceTransition`. In the simulator `ENTER` and `EXIT` fired from fix evaluation, but native region monitoring failed with error 5, so the stationary path is unverified.
 - **Bug found by testing:** revoking the location permission while the app ran made Android restart the foreground service, and `startForeground` threw a `SecurityException` that crashed the app. The service, the boot receiver and `start()` now check the permission first, report a `failure` (event and `getState().failure`) and stop instead of crashing. Verified on the emulator: no crash, failure reported, app alive.
 
 ## 15. Implementation notes: iOS (milestone 4)
