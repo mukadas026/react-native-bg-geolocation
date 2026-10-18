@@ -42,6 +42,9 @@ class AospEngine(
   private var pollOptions: ArmOptions? = null
   private val pollRunnable = Runnable { pollForMovement() }
 
+  private var geofenceCheckIntervalMs: Long? = null
+  private val geofenceRunnable = Runnable { checkGeofences() }
+
   private val locationListener = object : LocationListener {
     override fun onLocationChanged(location: Location) {
       lastLocation = location
@@ -117,6 +120,18 @@ class AospEngine(
   override fun stop() {
     stopLocating()
     disarm()
+    stopGeofenceChecks()
+  }
+
+  override fun startGeofenceChecks(intervalMs: Long) {
+    geofenceCheckIntervalMs = intervalMs
+    handler.removeCallbacks(geofenceRunnable)
+    handler.post(geofenceRunnable)
+  }
+
+  override fun stopGeofenceChecks() {
+    geofenceCheckIntervalMs = null
+    handler.removeCallbacks(geofenceRunnable)
   }
 
   private fun armSignificantMotion(): Boolean {
@@ -166,29 +181,43 @@ class AospEngine(
     callbacks.onMotionSignal()
   }
 
-  @SuppressLint("MissingPermission")
   private fun pollForMovement() {
     val options = pollOptions ?: return
-    val provider = pickProvider()
-    if (provider == null) {
-      callbacks.onEngineError("no usable location provider for motion poll")
-      reschedulePoll(options)
-      return
-    }
-    val onFix = { location: Location? ->
+    requestSingleFix { location ->
       handler.post {
-        if (pollOptions != null) {
-          val reference = lastLocation
-          if (location != null && reference != null &&
-            location.distanceTo(reference) > options.stationaryRadius
-          ) {
-            signalMotion()
-          } else {
-            if (location != null && reference == null) lastLocation = location
-            reschedulePoll(options)
-          }
+        if (pollOptions == null) return@post
+        val reference = lastLocation
+        if (location != null && reference != null &&
+          location.distanceTo(reference) > options.stationaryRadius
+        ) {
+          signalMotion()
+        } else {
+          if (location != null && reference == null) lastLocation = location
+          reschedulePoll(options)
         }
       }
+    }
+  }
+
+  private fun checkGeofences() {
+    val interval = geofenceCheckIntervalMs ?: return
+    requestSingleFix { location ->
+      handler.post {
+        if (geofenceCheckIntervalMs == null) return@post
+        if (location != null) callbacks.onGeofenceCheck(location)
+        handler.removeCallbacks(geofenceRunnable)
+        handler.postDelayed(geofenceRunnable, interval)
+      }
+    }
+  }
+
+  @SuppressLint("MissingPermission")
+  private fun requestSingleFix(onFix: (Location?) -> Unit) {
+    val provider = pickProvider()
+    if (provider == null) {
+      callbacks.onEngineError("no usable location provider for a single fix")
+      onFix(null)
+      return
     }
     try {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -214,7 +243,7 @@ class AospEngine(
       }
     } catch (e: SecurityException) {
       callbacks.onEngineError("location permission missing: ${e.message}")
-      reschedulePoll(options)
+      onFix(null)
     }
   }
 

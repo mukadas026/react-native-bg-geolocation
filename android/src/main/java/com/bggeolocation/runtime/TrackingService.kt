@@ -17,11 +17,23 @@ class TrackingService : Service() {
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     val runtime = TrackingRuntime.get(this)
+    if (!Permissions.hasLocationPermission(this)) {
+      runtime.reportFailure(MISSING_PERMISSION)
+      stopSelf()
+      return START_NOT_STICKY
+    }
+
     val notification = buildNotification(runtime.config)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-      startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
-    } else {
-      startForeground(NOTIFICATION_ID, notification)
+    try {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
+      } else {
+        startForeground(NOTIFICATION_ID, notification)
+      }
+    } catch (e: SecurityException) {
+      runtime.reportFailure("could not start the location service: ${e.message}")
+      stopSelf()
+      return START_NOT_STICKY
     }
 
     if (PrefsStateStore(this).trackingState == TrackingState.STOPPED && intent == null) {
@@ -52,6 +64,7 @@ class TrackingService : Service() {
   }
 
   companion object {
+    const val MISSING_PERMISSION = "location permission missing"
     private const val CHANNEL_ID = "bggeo_tracking"
     private const val NOTIFICATION_ID = 7421
   }

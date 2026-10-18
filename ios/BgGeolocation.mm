@@ -83,6 +83,64 @@
   resolve(@YES);
 }
 
+static void rejectUnimplemented(RCTPromiseRejectBlock reject, NSString *method)
+{
+  reject(
+      @"E_UNIMPLEMENTED",
+      [NSString stringWithFormat:@"%@ is not implemented on iOS yet", method],
+      nil);
+}
+
+- (void)addGeofence:(NSDictionary *)geofence resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
+{
+  rejectUnimplemented(reject, @"addGeofence");
+}
+
+- (void)addGeofences:(NSArray *)geofences resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
+{
+  rejectUnimplemented(reject, @"addGeofences");
+}
+
+- (void)removeGeofence:(NSString *)identifier resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
+{
+  rejectUnimplemented(reject, @"removeGeofence");
+}
+
+- (void)removeGeofences:(NSArray *)identifiers resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
+{
+  rejectUnimplemented(reject, @"removeGeofences");
+}
+
+- (void)getGeofences:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
+{
+  rejectUnimplemented(reject, @"getGeofences");
+}
+
+- (void)getGeofence:(NSString *)identifier resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
+{
+  rejectUnimplemented(reject, @"getGeofence");
+}
+
+- (void)geofenceExists:(NSString *)identifier resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
+{
+  rejectUnimplemented(reject, @"geofenceExists");
+}
+
+- (void)requestPermission:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
+{
+  rejectUnimplemented(reject, @"requestPermission");
+}
+
+- (void)getProviderState:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
+{
+  rejectUnimplemented(reject, @"getProviderState");
+}
+
+- (void)getCapabilities:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject
+{
+  rejectUnimplemented(reject, @"getCapabilities");
+}
+
 - (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
     (const facebook::react::ObjCTurboModule::InitParams &)params
 {

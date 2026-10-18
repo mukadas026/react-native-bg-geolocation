@@ -210,6 +210,9 @@ public final class BgGeoRuntime: NSObject, EngineCallbacks {
     case .bufferOverflow(let dropped):
       name = "buffer-overflow"
       payload = ["dropped": dropped]
+    case .geofence(let id, let action):
+      name = "geofence"
+      payload = ["identifier": id, "action": action.rawValue]
     }
     NSLog("[BgGeo] %@ %@", name, "\(payload)")
     onEvent?(name, payload)

@@ -6,9 +6,21 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import com.bggeolocation.core.Fix
 import com.bggeolocation.core.FixStore
+import com.bggeolocation.core.Geofence
+import com.bggeolocation.core.GeofenceStore
+import com.bggeolocation.core.StoredGeofence
 
-class BgGeoDatabase(context: Context) : SQLiteOpenHelper(context, "bggeo.db", null, 1) {
+class BgGeoDatabase(context: Context) : SQLiteOpenHelper(context, "bggeo.db", null, 2) {
   override fun onCreate(db: SQLiteDatabase) {
+    createFixTable(db)
+    createGeofenceTable(db)
+  }
+
+  override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+    if (oldVersion < 2) createGeofenceTable(db)
+  }
+
+  private fun createFixTable(db: SQLiteDatabase) {
     db.execSQL(
       """
       CREATE TABLE fix (
@@ -26,7 +38,22 @@ class BgGeoDatabase(context: Context) : SQLiteOpenHelper(context, "bggeo.db", nu
     )
   }
 
-  override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+  private fun createGeofenceTable(db: SQLiteDatabase) {
+    db.execSQL(
+      """
+      CREATE TABLE IF NOT EXISTS geofence (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT,
+        id TEXT NOT NULL UNIQUE,
+        lat REAL NOT NULL,
+        lon REAL NOT NULL,
+        radius REAL NOT NULL,
+        notify_entry INTEGER NOT NULL,
+        notify_exit INTEGER NOT NULL,
+        inside INTEGER
+      )
+      """.trimIndent()
+    )
+  }
 }
 
 class SqliteFixStore(private val helper: BgGeoDatabase) : FixStore {
@@ -91,4 +118,57 @@ class SqliteFixStore(private val helper: BgGeoDatabase) : FixStore {
       cursor.moveToFirst()
       cursor.getInt(0)
     }
+}
+
+class SqliteGeofenceStore(private val helper: BgGeoDatabase) : GeofenceStore {
+  override fun all(): List<StoredGeofence> {
+    val result = mutableListOf<StoredGeofence>()
+    helper.readableDatabase.rawQuery(
+      "SELECT id, lat, lon, radius, notify_entry, notify_exit, inside FROM geofence ORDER BY seq",
+      null
+    ).use { cursor ->
+      while (cursor.moveToNext()) {
+        result += StoredGeofence(
+          Geofence(
+            id = cursor.getString(0),
+            lat = cursor.getDouble(1),
+            lon = cursor.getDouble(2),
+            radius = cursor.getDouble(3),
+            notifyOnEntry = cursor.getInt(4) != 0,
+            notifyOnExit = cursor.getInt(5) != 0,
+          ),
+          if (cursor.isNull(6)) null else cursor.getInt(6) != 0,
+        )
+      }
+    }
+    return result
+  }
+
+  override fun save(geofence: Geofence, inside: Boolean?) {
+    val db = helper.writableDatabase
+    val values = ContentValues().apply {
+      put("lat", geofence.lat)
+      put("lon", geofence.lon)
+      put("radius", geofence.radius)
+      put("notify_entry", if (geofence.notifyOnEntry) 1 else 0)
+      put("notify_exit", if (geofence.notifyOnExit) 1 else 0)
+      if (inside == null) putNull("inside") else put("inside", if (inside) 1 else 0)
+    }
+    val updated = db.update("geofence", values, "id = ?", arrayOf(geofence.id))
+    if (updated == 0) {
+      values.put("id", geofence.id)
+      db.insert("geofence", null, values)
+    }
+  }
+
+  override fun setInside(id: String, inside: Boolean?) {
+    val values = ContentValues().apply {
+      if (inside == null) putNull("inside") else put("inside", if (inside) 1 else 0)
+    }
+    helper.writableDatabase.update("geofence", values, "id = ?", arrayOf(id))
+  }
+
+  override fun remove(id: String) {
+    helper.writableDatabase.delete("geofence", "id = ?", arrayOf(id))
+  }
 }

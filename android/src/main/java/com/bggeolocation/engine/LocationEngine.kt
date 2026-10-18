@@ -19,6 +19,7 @@ interface EngineCallbacks {
   fun onLocation(location: Location)
   fun onMotionSignal()
   fun onMotionSource(source: MotionSource)
+  fun onGeofenceCheck(location: Location)
   fun onEngineError(message: String)
 }
 
@@ -28,4 +29,6 @@ interface LocationEngine {
   fun startContinuous(distanceFilter: Double)
   fun arm(options: ArmOptions)
   fun stop()
+  fun startGeofenceChecks(intervalMs: Long)
+  fun stopGeofenceChecks()
 }

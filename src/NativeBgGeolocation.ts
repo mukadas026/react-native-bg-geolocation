@@ -14,6 +14,18 @@ export interface Spec extends TurboModule {
   getLocations(): Promise<Object[]>;
   destroyLocations(): Promise<boolean>;
 
+  addGeofence(geofence: Object): Promise<boolean>;
+  addGeofences(geofences: Object[]): Promise<boolean>;
+  removeGeofence(identifier: string): Promise<boolean>;
+  removeGeofences(identifiers: string[]): Promise<boolean>;
+  getGeofences(): Promise<Object[]>;
+  getGeofence(identifier: string): Promise<Object>;
+  geofenceExists(identifier: string): Promise<boolean>;
+
+  requestPermission(): Promise<Object>;
+  getProviderState(): Promise<Object>;
+  getCapabilities(): Promise<Object>;
+
   readonly onEvent: CodegenTypes.EventEmitter<Object>;
 }
 

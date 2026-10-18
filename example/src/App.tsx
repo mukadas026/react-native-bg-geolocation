@@ -12,6 +12,13 @@ import {
 import BackgroundGeolocation, { type State } from 'react-native-bg-geolocation';
 
 const AUTO_START = false;
+const DEMO_GEOFENCE = {
+  identifier: 'demo',
+  latitude: 5.605,
+  longitude: -0.187,
+  radius: 60,
+};
+
 const UPLOAD_URL = 'http://localhost:8080/locations';
 
 type KioskStatus = 'unknown' | 'unsupported' | 'not-owner' | 'on' | 'off';
@@ -69,6 +76,12 @@ export default function App() {
       BackgroundGeolocation.onBufferOverflow((event) =>
         append(`buffer-overflow dropped=${event.dropped.length}`)
       ),
+      BackgroundGeolocation.onGeofence((event) =>
+        append(`geofence ${event.identifier} ${event.action}`)
+      ),
+      BackgroundGeolocation.onProviderChange((event) =>
+        append(`provider ${event.authorization} enabled=${event.enabled}`)
+      ),
       BackgroundGeolocation.onMotionSource((event) =>
         append(`motion source ${event.source}`)
       ),
@@ -83,6 +96,7 @@ export default function App() {
       stationaryRadius: 25,
       url: UPLOAD_URL,
       notificationTitle: 'bg-geolocation example',
+      geofenceCheckInterval: 30,
     }).then(
       async (ready) => {
         setState(ready);
@@ -102,6 +116,20 @@ export default function App() {
       append(`${label} failed: ${(error as Error).message}`);
     }
   };
+
+  const addDemoGeofence = run('geofence', async () => {
+    await BackgroundGeolocation.addGeofence(DEMO_GEOFENCE);
+    append(`geofence ${DEMO_GEOFENCE.identifier} added`);
+  });
+
+  const askPermission = run('permission', async () => {
+    const provider = await BackgroundGeolocation.requestPermission();
+    const capabilities = await BackgroundGeolocation.getCapabilities();
+    append(
+      `permission ${provider.authorization}/${provider.accuracy} ` +
+        `engine=${capabilities.engine} geofenceLimit=${capabilities.geofenceLimit}`
+    );
+  });
 
   const toggleKiosk = async () => {
     if (!Kiosk) return;
@@ -151,6 +179,8 @@ export default function App() {
             kiosk === 'unsupported'
           }
         />
+        <Button title="Permission" onPress={askPermission} />
+        <Button title="Geofence" onPress={addDemoGeofence} />
         <Button
           title="Clear"
           onPress={run('clear', BackgroundGeolocation.destroyLocations)}
@@ -170,7 +200,7 @@ export default function App() {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, gap: 12 },
   title: { fontSize: 20, fontWeight: '600' },
-  row: { flexDirection: 'row', gap: 12 },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   log: { flex: 1 },
   logLine: { fontFamily: 'monospace', fontSize: 12 },
 });

@@ -1,6 +1,6 @@
 # Known gaps
 
-What is unverified, unspecified or unbuilt as of milestone 4. Each item says what would close it. Items marked **device** need physical hardware.
+What is unverified, unspecified or unbuilt as of the middle of milestone 5 (Android geofences, permissions and capabilities done; iOS side pending). Each item says what would close it. Items marked **device** need physical hardware.
 
 ## 1. Unverified behavior
 
@@ -27,11 +27,15 @@ Verified in the iPhone 17 simulator (iOS 27) only: start, record, distance filte
 | Boot resume on a real device | Verified on the emulator only. | **device**: reboot the Samsung (needs an unlock). |
 | Operation with Play Services disabled | Verified on the emulator only. | **device**: disable Play Services on a spare device. |
 | Battery cost of each fallback stage | Unmeasured. | **device**: per-stage overnight drain. |
+| Permission dialogs from `requestPermission()` | **Unverified.** Only the missing-permission failure path was exercised; the sequential dialogs (foreground, notifications, activity recognition, background) were not driven end to end. | Tap through them on a device, including Android 11+ where background location goes through Settings. |
+| Geofences on a real device | Verified on the emulator only, using mock GPS and the stationary check path. | **device**: walk across a real boundary. |
+| `onProviderChange` | Wired to the providers-changed broadcast; never observed firing. | Toggle location services on a device. |
 
 ## 2. Code gaps
 
 - **The Fused engine is not implemented.** ADR-0002 makes both Android engines first-class, but only `AospEngine` exists. Play-Services devices (such as the store-distributed smart-attendance app) currently run on the AOSP engine, which works there but forgoes ActivityRecognition labels, native geofencing and Fused battery behavior. `engine: 'auto'` and `engine: 'aosp'` are not wired up yet.
 - **No automated tests for the platform layers.** Only the pure cores (Kotlin, Swift) and the TypeScript reference model run in CI-able suites. The SQLite stores, uploaders, engines and runtimes have none.
+- **iOS geofences, permission flow and capabilities are not built.** The iOS module rejects `addGeofence`, `addGeofences`, `removeGeofence`, `removeGeofences`, `getGeofences`, `getGeofence`, `geofenceExists`, `requestPermission`, `getProviderState` and `getCapabilities` with `E_UNIMPLEMENTED`. The core already supports them; the iOS runtime must add a geofence store, native region monitoring (limit 19, see `design.md` 14b), `requestState` for the initial trigger, and the promise-based permission request.
 - **Android service restart from the background.** The alarm receiver restarts the runtime but cannot start the foreground service; recovery relies on `START_STICKY` and the boot receiver.
 - **`ready()` rebuilds the core.** Calling it again, or changing config, resets the stop-detection anchor and last-recorded fix.
 - **Config changes are not partial.** There is no `setConfig`; `ready()` replaces the whole config.
@@ -44,16 +48,18 @@ Verified in the iPhone 17 simulator (iOS 27) only: start, record, distance filte
 
 ## 3. Specification gaps
 
-Not yet in `conformance/README.md`, so no fixtures exist: geofences, heartbeat, odometer, accuracy filtering, HTTP 401/403 pausing, speed-based stop detection (ADR-0002 originally mentioned speed; the core uses displacement only), and periodic low-power checks while stationary.
+Not yet in `conformance/README.md`, so no fixtures exist: heartbeat, odometer, accuracy filtering, HTTP 401/403 pausing, geofence dwell, geofence-only tracking, and speed-based stop detection (ADR-0002 originally mentioned speed; the core uses displacement only). Geofences are specified (rules 17 to 22).
 
 ## 4. API gaps (versus the planned v1 surface in `design.md` section 8)
 
 Implemented: `ready`, `start`, `stop`, `changePace`, `getState`, `getCount`, `getLocations`, `destroyLocations`, and the events `onLocation`, `onMotionChange`, `onEnabledChange`, `onBufferOverflow`, `onMotionSource`, `onError`.
 
-Missing: `setConfig`, `reset`, `getCurrentPosition`, `watchPosition`, `stopWatchPosition`, `insertLocation`, `destroyLocation`, `sync`, odometer, the geofence methods and events, `requestPermission`, `getProviderState`, `onProviderChange`, `getCapabilities`, `getDeviceInfo`, `isPowerSaveMode`, `isIgnoringBatteryOptimizations`, `requestSettings`, `showSettings`, `beginBackgroundTask`/`finish`, `registerHeadlessTask`, `onHttp`, `onHeartbeat`, `onConnectivityChange`, `onPowerSaveChange`. Optional best-effort headless JS is not implemented.
+Also implemented on Android only: `addGeofence`, `addGeofences`, `removeGeofence`, `removeGeofences`, `getGeofences`, `getGeofence`, `geofenceExists`, `requestPermission`, `getProviderState`, `getCapabilities`, and the events `onGeofence` and `onProviderChange`. iOS rejects these (see section 2). `onGeofencesChange` is deferred.
+
+Missing everywhere: `setConfig`, `reset`, `getCurrentPosition`, `watchPosition`, `stopWatchPosition`, `insertLocation`, `destroyLocation`, `sync`, odometer, `getDeviceInfo`, `isPowerSaveMode`, `isIgnoringBatteryOptimizations`, `requestSettings`, `showSettings`, `beginBackgroundTask`/`finish`, `registerHeadlessTask`, `onHttp`, `onHeartbeat`, `onConnectivityChange`, `onPowerSaveChange`. Optional best-effort headless JS is not implemented.
 
 ## 5. Process gaps
 
-- Milestones 5 (geofences, permission flow, capability flags) and 6 (Expo config plugin, integration into the two host apps) are not started.
+- Milestone 5 is half done (Android) and milestone 6 (Expo config plugin, integration into the two host apps) is not started. Integrating into the host apps edits repositories outside this one, so it needs your go-ahead.
 - The host apps still use their own location code and `react-native-permissions` for location, which must be removed on adoption.
 - Example app: title and state text are dark-on-black in dark mode.

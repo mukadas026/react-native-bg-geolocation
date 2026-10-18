@@ -36,6 +36,43 @@ export type Config = {
   useMotionSensors?: boolean;
 };
 
+export type Geofence = {
+  identifier: string;
+  latitude: number;
+  longitude: number;
+  radius: number;
+  notifyOnEntry?: boolean;
+  notifyOnExit?: boolean;
+};
+
+export type GeofenceEvent = {
+  identifier: string;
+  action: 'ENTER' | 'EXIT';
+};
+
+export type Authorization = 'always' | 'whenInUse' | 'denied' | 'notDetermined';
+
+export type ProviderState = {
+  enabled: boolean;
+  authorization: Authorization;
+  accuracy: 'full' | 'reduced';
+  gps?: boolean;
+  network?: boolean;
+  permissions?: Record<string, boolean>;
+};
+
+export type Capabilities = {
+  platform: 'android' | 'ios';
+  engine: 'aosp' | 'corelocation';
+  geofenceLimit: number;
+  geofenceMinRadius?: number;
+  activityRecognition: boolean;
+  canRelaunchAfterKill: boolean;
+  supportsHeadlessJs: boolean;
+  managedDevice: boolean;
+  motionSource?: string | null;
+};
+
 export type State = {
   enabled: boolean;
   trackingState: 'stopped' | 'moving' | 'stationary';
@@ -74,6 +111,27 @@ const BackgroundGeolocation = {
   getLocations: () => NativeBgGeolocation.getLocations() as Promise<Location[]>,
   destroyLocations: () => NativeBgGeolocation.destroyLocations(),
 
+  addGeofence: (geofence: Geofence) =>
+    NativeBgGeolocation.addGeofence(geofence),
+  addGeofences: (geofences: Geofence[]) =>
+    NativeBgGeolocation.addGeofences(geofences),
+  removeGeofence: (identifier: string) =>
+    NativeBgGeolocation.removeGeofence(identifier),
+  removeGeofences: (identifiers: string[]) =>
+    NativeBgGeolocation.removeGeofences(identifiers),
+  getGeofences: () => NativeBgGeolocation.getGeofences() as Promise<Geofence[]>,
+  getGeofence: (identifier: string) =>
+    NativeBgGeolocation.getGeofence(identifier) as Promise<Geofence>,
+  geofenceExists: (identifier: string) =>
+    NativeBgGeolocation.geofenceExists(identifier),
+
+  requestPermission: () =>
+    NativeBgGeolocation.requestPermission() as Promise<ProviderState>,
+  getProviderState: () =>
+    NativeBgGeolocation.getProviderState() as Promise<ProviderState>,
+  getCapabilities: () =>
+    NativeBgGeolocation.getCapabilities() as Promise<Capabilities>,
+
   onLocation: (listener: Listener<Location>) => subscribe('location', listener),
   onMotionChange: (listener: Listener<MotionChangeEvent>) =>
     subscribe('motionchange', listener),
@@ -81,6 +139,10 @@ const BackgroundGeolocation = {
     subscribe('enabledchange', listener),
   onBufferOverflow: (listener: Listener<BufferOverflowEvent>) =>
     subscribe('buffer-overflow', listener),
+  onGeofence: (listener: Listener<GeofenceEvent>) =>
+    subscribe('geofence', listener),
+  onProviderChange: (listener: Listener<ProviderState>) =>
+    subscribe('providerchange', listener),
   onMotionSource: (listener: Listener<{ source: string }>) =>
     subscribe('motionsource', listener),
   onError: (listener: Listener<{ message: string }>) =>

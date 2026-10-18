@@ -11,6 +11,7 @@ data class RuntimeConfig(
   val notificationText: String = "Location tracking is active",
   val motionPollInterval: Long = 300,
   val useMotionSensors: Boolean = true,
+  val geofenceCheckInterval: Long = 300,
 ) {
   fun toJson(): String = JSONObject().apply {
     put("distanceFilter", tracking.distanceFilter)
@@ -27,6 +28,7 @@ data class RuntimeConfig(
     put("notificationText", notificationText)
     put("motionPollInterval", motionPollInterval)
     put("useMotionSensors", useMotionSensors)
+    put("geofenceCheckInterval", geofenceCheckInterval)
   }.toString()
 
   companion object {
@@ -55,6 +57,7 @@ data class RuntimeConfig(
         notificationText = json.optString("notificationText", defaults.notificationText),
         motionPollInterval = json.optLong("motionPollInterval", defaults.motionPollInterval),
         useMotionSensors = json.optBoolean("useMotionSensors", defaults.useMotionSensors),
+        geofenceCheckInterval = json.optLong("geofenceCheckInterval", defaults.geofenceCheckInterval),
       )
     }
   }

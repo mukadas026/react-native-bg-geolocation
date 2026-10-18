@@ -3,7 +3,10 @@ package com.bggeolocation.runtime
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
+import android.content.BroadcastReceiver
 import android.content.Intent
+import android.content.IntentFilter
+import android.location.LocationManager
 import android.location.Location
 import android.net.ConnectivityManager
 import android.net.Network
@@ -16,6 +19,8 @@ import android.util.Log
 import com.bggeolocation.core.CoreEvent
 import com.bggeolocation.core.EngineState
 import com.bggeolocation.core.Fix
+import com.bggeolocation.core.Geofence
+import com.bggeolocation.core.GeofenceResult
 import com.bggeolocation.core.Output
 import com.bggeolocation.core.TrackingCore
 import com.bggeolocation.core.TrackingState
@@ -28,6 +33,7 @@ import com.bggeolocation.storage.BgGeoDatabase
 import com.bggeolocation.storage.PrefsConfigStore
 import com.bggeolocation.storage.PrefsStateStore
 import com.bggeolocation.storage.SqliteFixStore
+import com.bggeolocation.storage.SqliteGeofenceStore
 import java.util.UUID
 
 fun interface RuntimeListener {
@@ -41,6 +47,7 @@ class TrackingRuntime private constructor(context: Context) : EngineCallbacks {
 
   private val database = BgGeoDatabase(app)
   private val fixStore = SqliteFixStore(database)
+  private val geofenceStore = SqliteGeofenceStore(database)
   private val stateStore = PrefsStateStore(app)
   private val configStore = PrefsConfigStore(app)
   private val uploader = HttpUploader()
@@ -58,6 +65,8 @@ class TrackingRuntime private constructor(context: Context) : EngineCallbacks {
   private var online = true
   private var networkCallbackRegistered = false
   private var currentFix: Fix? = null
+  private var geofenceChecksOn = false
+  private var providerReceiverRegistered = false
   private val tickRunnable = Runnable { apply(ensureCore().tick(now())) }
 
   fun configure(newConfig: RuntimeConfig, done: () -> Unit) {
@@ -77,7 +86,23 @@ class TrackingRuntime private constructor(context: Context) : EngineCallbacks {
     }
   }
 
+  fun reportFailure(message: String) {
+    Log.w(TAG, "failure: $message")
+    app.getSharedPreferences("bggeo", Context.MODE_PRIVATE).edit().putString("failure", message).apply()
+    listener?.onEvent("error", mapOf("message" to message))
+  }
+
+  private fun clearFailure() {
+    app.getSharedPreferences("bggeo", Context.MODE_PRIVATE).edit().remove("failure").apply()
+  }
+
   fun start(done: (Result<Unit>) -> Unit) {
+    if (!Permissions.hasLocationPermission(app)) {
+      reportFailure(TrackingService.MISSING_PERMISSION)
+      done(Result.failure(SecurityException(TrackingService.MISSING_PERMISSION)))
+      return
+    }
+    clearFailure()
     val intent = Intent(app, TrackingService::class.java)
     try {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -113,6 +138,50 @@ class TrackingRuntime private constructor(context: Context) : EngineCallbacks {
     handler.post { apply(ensureCore().tick(now())) }
   }
 
+  fun addGeofences(geofences: List<Geofence>, done: (Result<Unit>) -> Unit) {
+    handler.post {
+      var failure: Throwable? = null
+      for (geofence in geofences) {
+        val output = ensureCore().addGeofence(geofence, now())
+        apply(output)
+        when (output.result) {
+          GeofenceResult.LIMIT ->
+            failure = failure ?: IllegalStateException("geofence limit of ${GEOFENCE_LIMIT} reached")
+          GeofenceResult.INVALID ->
+            failure = failure ?: IllegalArgumentException("invalid geofence '${geofence.id}'")
+          else -> Unit
+        }
+      }
+      done(failure?.let { Result.failure(it) } ?: Result.success(Unit))
+    }
+  }
+
+  fun removeGeofences(ids: List<String>, done: () -> Unit) {
+    handler.post {
+      ids.forEach { apply(ensureCore().removeGeofence(it, now())) }
+      done()
+    }
+  }
+
+  fun geofences(): List<Geofence> = geofenceStore.all().map { it.geofence }
+
+  fun providerState(): Map<String, Any?> = Permissions.providerState(app)
+
+  fun capabilities(): Map<String, Any?> = mapOf(
+    "platform" to "android",
+    "engine" to "aosp",
+    "geofenceLimit" to GEOFENCE_LIMIT,
+    "activityRecognition" to false,
+    "canRelaunchAfterKill" to true,
+    "supportsHeadlessJs" to false,
+    "managedDevice" to Permissions.isManagedDevice(app),
+    "motionSource" to engine.motionSource?.label,
+  )
+
+  fun emitProviderChange() {
+    listener?.onEvent("providerchange", Permissions.providerState(app))
+  }
+
   fun snapshot(): Map<String, Any?> {
     val state = stateStore.trackingState
     return mapOf(
@@ -121,6 +190,7 @@ class TrackingRuntime private constructor(context: Context) : EngineCallbacks {
       "isMoving" to (state == TrackingState.MOVING),
       "count" to fixStore.size(),
       "motionSource" to engine.motionSource?.label,
+      "failure" to app.getSharedPreferences("bggeo", Context.MODE_PRIVATE).getString("failure", null),
     )
   }
 
@@ -146,6 +216,16 @@ class TrackingRuntime private constructor(context: Context) : EngineCallbacks {
     currentFix = null
   }
 
+  override fun onGeofenceCheck(location: Location) {
+    val fix = Fix(
+      id = "geofence-check",
+      lat = location.latitude,
+      lon = location.longitude,
+      timestamp = location.time,
+    )
+    apply(ensureCore().onGeofenceCheck(fix, now()))
+  }
+
   override fun onMotionSignal() {
     apply(ensureCore().onMotionSignal(now()))
   }
@@ -163,8 +243,12 @@ class TrackingRuntime private constructor(context: Context) : EngineCallbacks {
   private fun ensureCore(): TrackingCore {
     core?.let { return it }
     registerNetworkCallback()
-    val tracking = config.tracking.copy(autoSync = config.tracking.autoSync && config.url != null)
-    val created = TrackingCore(tracking, fixStore, stateStore, online)
+    registerProviderReceiver()
+    val tracking = config.tracking.copy(
+      autoSync = config.tracking.autoSync && config.url != null,
+      geofenceLimit = GEOFENCE_LIMIT,
+    )
+    val created = TrackingCore(tracking, fixStore, stateStore, online, geofenceStore)
     core = created
     engineMode = EngineState.OFF
     apply(created.onLaunch(now()))
@@ -176,6 +260,7 @@ class TrackingRuntime private constructor(context: Context) : EngineCallbacks {
     output.events.forEach { dispatch(it) }
     output.upload?.let { request -> upload(request.fixes) }
     reconcileEngine(current)
+    reconcileGeofenceChecks(current)
     scheduleAlarm(current)
     if (current.trackingState == TrackingState.STOPPED) {
       app.stopService(Intent(app, TrackingService::class.java))
@@ -196,6 +281,7 @@ class TrackingRuntime private constructor(context: Context) : EngineCallbacks {
     val desired = current.engineState
     if (desired == engineMode) return
     engineMode = desired
+    geofenceChecksOn = false
     when (desired) {
       EngineState.CONTINUOUS -> engine.startContinuous(config.tracking.distanceFilter)
       EngineState.ARMED -> engine.arm(
@@ -207,6 +293,30 @@ class TrackingRuntime private constructor(context: Context) : EngineCallbacks {
       )
       EngineState.OFF -> engine.stop()
     }
+  }
+
+  private fun reconcileGeofenceChecks(current: TrackingCore) {
+    val desired = current.trackingState == TrackingState.STATIONARY && current.geofenceIds.isNotEmpty()
+    if (desired == geofenceChecksOn) return
+    geofenceChecksOn = desired
+    if (desired) {
+      engine.startGeofenceChecks(config.geofenceCheckInterval * 1000)
+    } else {
+      engine.stopGeofenceChecks()
+    }
+  }
+
+  private fun registerProviderReceiver() {
+    if (providerReceiverRegistered) return
+    providerReceiverRegistered = true
+    app.registerReceiver(
+      object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+          emitProviderChange()
+        }
+      },
+      IntentFilter(LocationManager.PROVIDERS_CHANGED_ACTION),
+    )
   }
 
   private fun scheduleAlarm(current: TrackingCore) {
@@ -232,6 +342,8 @@ class TrackingRuntime private constructor(context: Context) : EngineCallbacks {
       is CoreEvent.MotionChange -> "motionchange" to mapOf("isMoving" to event.isMoving)
       is CoreEvent.Location -> "location" to locationPayload(event.id)
       is CoreEvent.BufferOverflow -> "buffer-overflow" to mapOf("dropped" to event.dropped)
+      is CoreEvent.GeofenceTransition ->
+        "geofence" to mapOf("identifier" to event.id, "action" to event.action.name)
     }
     Log.i(TAG, "$name $payload")
     listener?.onEvent(name, payload)
@@ -279,6 +391,7 @@ class TrackingRuntime private constructor(context: Context) : EngineCallbacks {
 
   companion object {
     private const val TAG = "BgGeo"
+    const val GEOFENCE_LIMIT = 20
 
     @Volatile private var instance: TrackingRuntime? = null
 
